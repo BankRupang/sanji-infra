@@ -1,18 +1,27 @@
-terraform {
-  required_providers {
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0"
-    }
+provider "aws" {
+  region = "ap-northeast-2"
+}
+
+data "aws_ami" "al2023" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"]
+  }
+
+  filter {
+    name   = "state"
+    values = ["available"]
   }
 }
 
-# 무작위 ID를 생성하는 리소스
-resource "random_id" "server" {
-  byte_length = 8
-}
+resource "aws_instance" "test" {
+  ami           = data.aws_ami.al2023.id
+  instance_type = "t3.micro"
 
-# 생성된 ID를 출력
-output "server_id" {
-  value = random_id.server.hex
+  tags = {
+    Name = "sanji-ec2-test"
+  }
 }
