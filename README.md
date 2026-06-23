@@ -20,6 +20,12 @@ cd ..
 terraform init    # "로컬 상태를 S3로 옮길까요?" → yes
 terraform plan
 terraform apply
+
+# 3) 인프라 제거 후 재배포 시 SSM 파라미터 값 보존
+bash scripts/ssm-backup.sh   # destroy 전 백업
+terraform destroy
+terraform apply
+bash scripts/ssm-restore.sh  # apply 후 복구
 ```
 
 ## 파일 구성
@@ -27,6 +33,9 @@ terraform apply
 ```
 root
 ├── bootstrap/                 # [초기화] S3 버킷 생성 (최초 1회 실행)
+├── scripts/
+│   ├── ssm-backup.sh          # destroy 전 SSM 파라미터 값 백업
+│   └── ssm-restore.sh         # apply 후 SSM 파라미터 값 복구
 ├── docs/
 │   └── DEPLOY.md              # [문서화] 단계별 배포 가이드
 │
