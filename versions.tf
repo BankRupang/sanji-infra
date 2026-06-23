@@ -19,18 +19,21 @@ terraform {
   # --------------------------------------------------------------------------
   # 상태 파일(state) 저장 위치
   # --------------------------------------------------------------------------
-  # 기본값은 "로컬"입니다. terraform.tfstate 파일이 이 폴더에 생깁니다.
-  # 혼자 연습할 때는 이대로도 충분합니다. (별도 설정 불필요)
-  #
-  # 팀이 함께 쓰거나 운영에 올릴 때는 아래 backend "s3" 주석을 풀어
-  # 상태 파일을 S3에 두고, DynamoDB로 "동시에 두 명이 apply하는 사고"를 막습니다.
-  # (주의: S3 버킷과 DynamoDB 테이블은 Terraform 밖에서 미리 만들어 두어야 합니다.)
-  #
-  # backend "s3" {
-  #   bucket         = "sanji-terraform-state"     # 미리 만든 S3 버킷 이름
-  #   key            = "prod/terraform.tfstate"    # 버킷 안에서의 파일 경로
-  #   region         = "ap-northeast-2"
-  #   dynamodb_table = "sanji-terraform-lock"       # 미리 만든 잠금용 테이블
-  #   encrypt        = true
-  # }
+  # 상태 파일을 S3에 저장하고 DynamoDB로 동시 apply를 막습니다.
+  # (주의: apply 전에 S3 버킷과 DynamoDB 테이블을 Terraform 밖에서 먼저 만들어야 합니다.)
+  #   aws s3api create-bucket --bucket sanji-terraform-state --region ap-northeast-2 \
+  #     --create-bucket-configuration LocationConstraint=ap-northeast-2
+  #   aws s3api put-bucket-versioning --bucket sanji-terraform-state \
+  #     --versioning-configuration Status=Enabled
+  #   aws dynamodb create-table --table-name sanji-terraform-lock \
+  #     --attribute-definitions AttributeName=LockID,AttributeType=S \
+  #     --key-schema AttributeName=LockID,KeyType=HASH \
+  #     --billing-mode PAY_PER_REQUEST --region ap-northeast-2
+  backend "s3" {
+    bucket         = "sanji-terraform-state"
+    key            = "prod/terraform.tfstate"
+    region         = "ap-northeast-2"
+    dynamodb_table = "sanji-terraform-lock"
+    encrypt        = true
+  }
 }

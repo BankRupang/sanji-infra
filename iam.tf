@@ -193,15 +193,26 @@ data "aws_iam_policy_document" "github_actions" {
     ]
     resources = ["arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.project}/*"]
   }
+  # 서비스/태스크 수준 작업: 이 클러스터 안의 리소스로만 범위를 제한합니다.
   statement {
-    sid = "EcsDeploy"
+    sid = "EcsDeployService"
     actions = [
       "ecs:UpdateService",
       "ecs:DescribeServices",
-      "ecs:DescribeTaskDefinition",
-      "ecs:RegisterTaskDefinition",
       "ecs:ListTasks",
       "ecs:DescribeTasks",
+    ]
+    resources = [
+      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/${local.name}-cluster/*",
+      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:task/${local.name}-cluster/*",
+    ]
+  }
+  # RegisterTaskDefinition은 AWS 정책상 특정 리소스로 범위 제한이 불가합니다.
+  statement {
+    sid = "EcsTaskDefinition"
+    actions = [
+      "ecs:DescribeTaskDefinition",
+      "ecs:RegisterTaskDefinition",
     ]
     resources = ["*"]
   }

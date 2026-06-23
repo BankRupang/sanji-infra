@@ -217,7 +217,7 @@ variable "enable_github_oidc" {
 variable "github_repo" {
   description = "OIDC 신뢰를 허용할 GitHub 저장소 (형식: 조직/저장소)"
   type        = string
-  default     = "BankRupang/sanji-jk"
+  default     = "BankRupang/san-ji-jik-kyeng"
 }
 
 # --- 알람 ---

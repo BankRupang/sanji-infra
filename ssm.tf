@@ -60,7 +60,7 @@ locals {
 
 # Kafka Cluster ID: 최초 1회 UUID를 만들어 넣어야 합니다. (배포 가이드 1단계)
 resource "aws_ssm_parameter" "kafka_cluster_id" {
-  name  = "/${var.project}/kafka/cluster-id"
+  name  = "/${var.project}/${var.environment}/kafka/cluster-id"
   type  = "SecureString"
   value = "CHANGE_ME" # 배포 가이드의 kafka-storage.sh random-uuid 결과로 교체
   lifecycle {
@@ -71,14 +71,14 @@ resource "aws_ssm_parameter" "kafka_cluster_id" {
 # Kafka EC2 사설 IP: Terraform이 인스턴스를 만들면서 자동으로 채웁니다.
 # (기존 가이드는 수동 등록이었지만, IP를 Terraform이 알고 있으니 자동화합니다)
 resource "aws_ssm_parameter" "kafka_private_ip" {
-  name  = "/${var.project}/kafka/private-ip"
+  name  = "/${var.project}/${var.environment}/kafka/private-ip"
   type  = "String"
   value = aws_instance.kafka.private_ip
 }
 
 # Grafana 관리자 비밀번호
 resource "aws_ssm_parameter" "grafana_admin_password" {
-  name  = "/${var.project}/monitoring/grafana-admin-password"
+  name  = "/${var.project}/${var.environment}/monitoring/grafana-admin-password"
   type  = "SecureString"
   value = "CHANGE_ME"
   lifecycle {
@@ -88,7 +88,7 @@ resource "aws_ssm_parameter" "grafana_admin_password" {
 
 # Grafana 알림용 Slack Webhook
 resource "aws_ssm_parameter" "monitoring_slack_webhook" {
-  name  = "/${var.project}/monitoring/slack-webhook-url"
+  name  = "/${var.project}/${var.environment}/monitoring/slack-webhook-url"
   type  = "SecureString"
   value = "CHANGE_ME"
   lifecycle {
