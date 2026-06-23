@@ -221,6 +221,11 @@ data "aws_iam_policy_document" "github_actions" {
     actions   = ["ssm:SendCommand", "ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
     resources = ["*"]
   }
+  statement {
+    sid       = "Ec2DescribeForSsm"
+    actions   = ["ec2:DescribeInstances"]
+    resources = ["*"]
+  }
   # ECS 새 태스크가 역할을 쓰려면 CI 역할이 그 역할을 넘겨줄 수 있어야 함
   statement {
     sid       = "PassEcsRoles"
