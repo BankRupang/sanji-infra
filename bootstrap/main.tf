@@ -1,7 +1,9 @@
 # ============================================================================
-# Bootstrap: Terraform 상태 저장용 S3 버킷 + DynamoDB 테이블
+# Bootstrap: Terraform 상태 저장용 S3 버킷
 # ============================================================================
 # 본 인프라(.terraform/*.tf)를 처음 apply하기 전에 여기서 먼저 실행합니다.
+# S3 버킷 하나만 만들면 됩니다. 잠금은 use_lockfile 옵션으로 S3가 직접 처리합니다.
+# (Terraform 1.10부터 DynamoDB 없이 S3 잠금 파일 방식으로 동작합니다.)
 #
 # 사용 방법:
 #   cd .terraform/bootstrap
@@ -10,7 +12,7 @@
 #
 # 이후 상위 폴더로 돌아가서 본 인프라를 apply합니다.
 #   cd ..
-#   terraform init    <- "로컬 상태를 S3로 옮길까요?" 라고 물으면 yes
+#   terraform init
 #   terraform apply
 # ============================================================================
 
@@ -69,30 +71,8 @@ resource "aws_s3_bucket_public_access_block" "tf_state" {
 }
 
 # ----------------------------------------------------------------------------
-# DynamoDB 테이블: 동시 apply 잠금
-# ----------------------------------------------------------------------------
-resource "aws_dynamodb_table" "tf_lock" {
-  name         = "sanji-terraform-lock"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
-
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-# ----------------------------------------------------------------------------
 # 출력: apply 후 확인용
 # ----------------------------------------------------------------------------
 output "s3_bucket_name" {
   value = aws_s3_bucket.tf_state.bucket
-}
-
-output "dynamodb_table_name" {
-  value = aws_dynamodb_table.tf_lock.name
 }

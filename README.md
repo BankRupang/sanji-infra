@@ -11,7 +11,7 @@
 S3 backend를 먼저 만들어야 합니다. `bootstrap/` 폴더를 먼저 실행합니다.
 
 ```bash
-# 1) S3 버킷 + DynamoDB 테이블 생성 (최초 1회)
+# 1) S3 버킷 생성 (최초 1회)
 cd bootstrap
 terraform init && terraform apply
 cd ..
@@ -26,7 +26,7 @@ terraform apply
 
 ```
 root
-├── bootstrap/                 # [초기화] S3 버킷 + DynamoDB 테이블 (최초 1회 실행)
+├── bootstrap/                 # [초기화] S3 버킷 생성 (최초 1회 실행)
 ├── docs/
 │   └── DEPLOY.md              # [문서화] 단계별 배포 가이드
 │
@@ -90,7 +90,7 @@ graph TD
 
     %% 1. 문서 및 초기화
     subgraph Docs_Init ["0. 준비 및 문서 (Docs & Init)"]
-        bootstrap["bootstrap/<br>(S3 + DynamoDB)"]
+        bootstrap["bootstrap/<br>(S3 버킷 생성)"]
         deploy["docs/DEPLOY.md<br>(배포 가이드)"]
     end
     class bootstrap,deploy doc;
