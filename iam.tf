@@ -141,7 +141,7 @@ resource "aws_iam_role_policy" "ec2_grafana_ec2" {
     Statement = [{
       Sid      = "GrafanaDescribeRegions"
       Effect   = "Allow"
-      Actions  = ["ec2:DescribeRegions"]
+      Action   = ["ec2:DescribeRegions"]
       Resource = "*"
     }]
   })
