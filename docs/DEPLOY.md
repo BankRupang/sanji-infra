@@ -204,10 +204,11 @@ docker push $REGISTRY/sanji/gateway-server:latest
 
 ## 7. Kafka / 모니터링 EC2 배포
 
-EC2 위의 Kafka와 모니터링(PLG)은 Terraform이 "서버와 도커"까지만 준비합니다.
-실제 컨테이너 실행은 SSM Run Command로 합니다.
+> **자동화 완료**: 아래 작업은 GitHub Actions `Deploy EC2` 워크플로우가 자동으로 수행합니다.
+> `main` 브랜치에 코드가 합쳐지면 자동 실행되고, 수동으로 돌리려면 워크플로우 페이지에서 `workflow_dispatch`를 누르면 됩니다.
+> 직접 실행할 필요는 없습니다.
 
-요약하면 SSM Run Command로 각 EC2에서 아래를 실행합니다.
+(참고) 워크플로우 내부에서 하는 일:
 
 ```bash
 cd /home/ec2-user/sanji-jk
