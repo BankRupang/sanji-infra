@@ -31,7 +31,8 @@ bash scripts/ssm-restore.sh   # SSM 파라미터 복구
 bash scripts/jmx-setup.sh     # Kafka EC2에 JMX Exporter JAR 다운로드
 bash scripts/db-init.sh       # RDS 스키마 초기화 (psql 스크립트 실행)
 bash scripts/keycloak-setup.sh # Keycloak realm import + client-secret 발급 + SSM 저장
-# GitHub Actions에서 Deploy ECS 자동 실행 (main 브랜치 push 시)
+# GitHub Actions에서 Deploy ECS 수동 실행 (workflow_dispatch)
+# ECR 이미지가 destroy 시 함께 삭제되므로 main push와 무관하게 수동으로 한 번 실행해야 앱이 기동됨
 ```
 
 ## 파일 구성
