@@ -101,7 +101,7 @@ resource "aws_ecs_service" "app" {
   launch_type     = "FARGATE"
 
   # ALB에 붙는 gateway는 기동 시간이 걸리므로 헬스체크 유예시간을 줍니다.
-  health_check_grace_period_seconds = each.value.alb ? 60 : null
+  health_check_grace_period_seconds = each.value.alb ? 180 : null
 
   network_configuration {
     subnets          = [local.primary_public_subnet_id]
