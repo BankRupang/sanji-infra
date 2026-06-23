@@ -52,7 +52,7 @@ locals {
       }
     }
     "user-service" = {
-      port   = 19091, cpu = 1024, memory = 2048
+      port   = 19091, cpu = 2048, memory = 4096
       schema = "user_schema", redis = false, kafka = false, alb = false
       secrets = {
         SPRING_DATASOURCE_PASSWORD = "db-password"
@@ -68,19 +68,19 @@ locals {
       }
     }
     "auction-service" = {
-      port      = 19092, cpu = 1024, memory = 2048
+      port      = 19092, cpu = 2048, memory = 4096
       schema    = "auction_schema", redis = true, kafka = true, alb = false
       secrets   = { SPRING_DATASOURCE_PASSWORD = "db-password" }
       extra_env = {}
     }
     "order-service" = {
-      port      = 19094, cpu = 1024, memory = 2048
+      port      = 19094, cpu = 2048, memory = 4096
       schema    = "order_schema", redis = false, kafka = true, alb = false
       secrets   = { SPRING_DATASOURCE_PASSWORD = "db-password" }
       extra_env = {}
     }
     "payment-service" = {
-      port   = 19095, cpu = 1024, memory = 2048
+      port   = 19095, cpu = 2048, memory = 4096
       schema = "payment_schema", redis = false, kafka = true, alb = false
       secrets = {
         SPRING_DATASOURCE_PASSWORD = "db-password"
@@ -90,7 +90,7 @@ locals {
       extra_env = {}
     }
     "notification-service" = {
-      port   = 19096, cpu = 1024, memory = 2048
+      port   = 19096, cpu = 2048, memory = 4096
       schema = "notification_schema", redis = false, kafka = true, alb = false
       secrets = {
         SPRING_DATASOURCE_PASSWORD = "db-password"
@@ -100,7 +100,7 @@ locals {
       extra_env = {}
     }
     "ai-service" = {
-      port   = 19097, cpu = 1024, memory = 2048
+      port   = 19097, cpu = 2048, memory = 4096
       schema = "ai_schema", redis = false, kafka = false, alb = false
       secrets = {
         SPRING_DATASOURCE_PASSWORD = "db-password"

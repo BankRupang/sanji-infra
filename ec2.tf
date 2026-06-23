@@ -45,6 +45,10 @@ resource "aws_instance" "kafka" {
     encrypted   = true
   }
 
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   tags = {
     Name = "${local.name}-kafka"
     Role = "kafka" # SSM Run Command 대상 지정에 사용
@@ -66,6 +70,10 @@ resource "aws_instance" "monitoring" {
     volume_size = var.monitoring_volume_size
     volume_type = "gp3"
     encrypted   = true
+  }
+
+  lifecycle {
+    ignore_changes = [ami]
   }
 
   tags = {
