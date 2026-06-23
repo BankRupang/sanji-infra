@@ -14,7 +14,7 @@
 set -euo pipefail
 
 REGION="ap-northeast-2"
-REALM_FILE="infra/keycloak/realm-export.json"
+REALM_FILE="scripts/realm-export.json"
 KEYCLOAK_HOST="keycloak.sanji.local"
 KEYCLOAK_PORT="18080"
 LOCAL_PORT="18080"

@@ -44,7 +44,7 @@ fi
 echo "  RDS 엔드포인트: ${RDS_HOST}"
 
 DB_PASSWORD=$(aws.exe ssm get-parameter \
-  --name "/sanji/prod/db-password" \
+  --name "/sanji/prod/db/password" \
   --with-decryption \
   --region "${REGION}" \
   --query "Parameter.Value" \

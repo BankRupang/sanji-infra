@@ -63,6 +63,15 @@ for i in $(seq 1 20); do
     echo ""
     echo "완료. JMX Exporter JAR 다운로드 성공."
     echo "  경로: ${JMX_DIR}/${JMX_JAR}"
+
+    # JAR 없이 기동된 Kafka를 재시작해서 -javaagent를 정상 로드합니다.
+    echo "Kafka 컨테이너 재시작 중..."
+    aws.exe ssm send-command \
+      --document-name "AWS-RunShellScript" \
+      --targets "[{\"Key\":\"instanceids\",\"Values\":[\"${KAFKA_ID}\"]}]" \
+      --parameters "{\"commands\":[\"docker compose -f /home/ec2-user/sanji-jk/docker-compose.kafka.yml restart kafka\"]}" \
+      --region "${REGION}" > /dev/null
+    echo "재시작 요청 완료."
     exit 0
   elif [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Cancelled" ]; then
     echo ""

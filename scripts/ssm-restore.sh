@@ -32,6 +32,13 @@ jq.exe -c '.[]' "${BACKUP}" | tr -d '\r' | while read -r param; do
     continue
   fi
 
+  # kafka/private-ip는 terraform apply가 새 EC2 IP로 자동 채움.
+  # 백업된 옛날 IP로 덮어쓰면 Kafka 광고 주소와 Prometheus 타겟이 틀어짐.
+  if [[ "${NAME}" == */kafka/private-ip ]]; then
+    echo "  건너뜀 (terraform 자동 관리): ${NAME}"
+    continue
+  fi
+
   aws.exe ssm put-parameter \
     --name "${NAME}" \
     --value "${VALUE}" \
