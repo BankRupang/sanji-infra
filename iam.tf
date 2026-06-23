@@ -117,6 +117,21 @@ resource "aws_iam_role_policy" "ec2_ssm_read" {
   policy = data.aws_iam_policy_document.ec2_ssm_read.json
 }
 
+# ecs-discovery.sh(cron)가 ECS 태스크 IP를 조회할 때 필요
+resource "aws_iam_role_policy" "ec2_ecs_discovery" {
+  name = "${local.name}-ec2-ecs-discovery"
+  role = aws_iam_role.ec2.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "EcsDiscovery"
+      Effect   = "Allow"
+      Action   = ["ecs:ListTasks", "ecs:DescribeTasks"]
+      Resource = "*"
+    }]
+  })
+}
+
 # Grafana CloudWatch datasource가 리전 목록을 조회할 때 필요
 resource "aws_iam_role_policy" "ec2_grafana_ec2" {
   name = "${local.name}-ec2-grafana-ec2"
