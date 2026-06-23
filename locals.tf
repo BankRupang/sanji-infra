@@ -53,7 +53,7 @@ locals {
     }
     "user-service" = {
       port   = 19091, cpu = 2048, memory = 4096
-      schema = "user_schema", redis = false, kafka = false, alb = false
+      schema = "user_schema", redis = true, kafka = false, alb = false
       secrets = {
         SPRING_DATASOURCE_PASSWORD = "db-password"
         KEYCLOAK_CLIENT_SECRET     = "keycloak-client-secret"
@@ -69,7 +69,7 @@ locals {
     }
     "auction-service" = {
       port      = 19092, cpu = 2048, memory = 4096
-      schema    = "auction_schema", redis = true, kafka = true, alb = false
+      schema    = "auction_schema", redis = false, kafka = true, alb = false
       secrets   = { SPRING_DATASOURCE_PASSWORD = "db-password" }
       extra_env = {}
     }
@@ -81,7 +81,7 @@ locals {
     }
     "payment-service" = {
       port   = 19095, cpu = 2048, memory = 4096
-      schema = "payment_schema", redis = false, kafka = true, alb = false
+      schema = "payment_schema", redis = true, kafka = true, alb = false
       secrets = {
         SPRING_DATASOURCE_PASSWORD = "db-password"
         TOSS_CLIENT_KEY            = "toss-client-key"
@@ -91,7 +91,7 @@ locals {
     }
     "notification-service" = {
       port   = 19096, cpu = 2048, memory = 4096
-      schema = "notification_schema", redis = false, kafka = true, alb = false
+      schema = "notification_schema", redis = true, kafka = true, alb = false
       secrets = {
         SPRING_DATASOURCE_PASSWORD = "db-password"
         SLACK_WEBHOOK_URL          = "slack-webhook-url"
