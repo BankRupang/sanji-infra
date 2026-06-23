@@ -28,7 +28,7 @@ resource "aws_lb_target_group" "gateway" {
   health_check {
     path                = "/actuator/health"
     matcher             = "200"
-    interval            = 30
+    interval            = 10
     timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 3
@@ -41,8 +41,8 @@ resource "aws_lb_target_group" "gateway" {
     enabled         = true
   }
 
-  # 태스크 교체 시 기존 연결을 정리할 여유 시간 (문서: deregistrationDelay)
-  deregistration_delay = 120
+  # 태스크 교체 시 기존 연결을 정리할 여유 시간
+  deregistration_delay = 30
 }
 
 # HTTP(80) 리스너
