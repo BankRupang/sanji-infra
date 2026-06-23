@@ -70,3 +70,85 @@ root
 │   # ----------------------------------------------------
 └── cloudwatch.tf              # CloudWatch 로그 그룹 및 경보(Alarm) 설정
 ```
+
+## 레이아웃
+
+> **분홍/보라**: 전체 인프라의 뼈대가 되는 설정 및 네트워크/보안
+> 
+> **빨강**: 데이터베이스 및 저장소
+> 
+> **초록**: 실제 컨테이너 및 EC2가 구동되는 애플리케이션 영역
+
+```mermaid
+graph TD
+    %% 스타일 정의
+    classDef config fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef network fill:#bbf,stroke:#333,stroke-width:1px;
+    classDef data fill:#fbb,stroke:#333,stroke-width:1px;
+    classDef compute fill:#bfb,stroke:#333,stroke-width:1px;
+    classDef doc fill:#eee,stroke:#333,stroke-width:1px;
+
+    %% 1. 문서 및 초기화
+    subgraph Docs_Init ["0. 준비 및 문서 (Docs & Init)"]
+        bootstrap["bootstrap/<br>(S3 + DynamoDB)"]
+        deploy["docs/DEPLOY.md<br>(배포 가이드)"]
+    end
+    class bootstrap,deploy doc;
+
+    %% 2. 공통 설정 레이어
+    subgraph Config_Layer ["1. 설정 레이어 (Configuration)"]
+        versions["versions.tf<br>(Backend/Provider)"]
+        main["main.tf<br>(Region/Data)"]
+        vars["variables.tf<br>terraform.tfvars.example"]
+        locals["locals.tf<br>(9개 서비스 정의표)"]
+        outputs["outputs.tf<br>(결과 출력)"]
+    end
+    class versions,main,vars,locals,outputs config;
+
+    %% 3. 네트워크 및 보안 레이어
+    subgraph Network_Layer ["2. 네트워크 & 보안 (Network & Security)"]
+        network["network.tf<br>(VPC, Subnet, IGW)"]
+        sg["security_groups.tf<br>(보안 그룹)"]
+        iam["iam.tf<br>(ECS/EC2/OIDC 권한)"]
+        ssm["ssm.tf<br>(시크릿/파라미터)"]
+    end
+    class network,sg,iam,ssm network;
+
+    %% 4. 데이터 저장소 레이어
+    subgraph Data_Layer ["3. 데이터 레이어 (Data Stores)"]
+        ecr["ecr.tf<br>(Docker 저장소)"]
+        rds["rds.tf<br>(PostgreSQL)"]
+        elasticache["elasticache.tf<br>(Redis)"]
+    end
+    class ecr,rds,elasticache data;
+
+    %% 5. 애플리케이션 및 컴퓨팅 레이어
+    subgraph Compute_Layer ["4. 서비스 레이어 (Compute & Routing)"]
+        alb["alb.tf<br>(로드밸런서/라우팅)"]
+        ecs_cluster["ecs_cluster.tf<br>(ECS 클러스터/Service Discovery)"]
+        ecs_services["ecs_services.tf<br>(일반 서비스 9개 for_each)"]
+        ecs_bid["ecs_bid.tf<br>(입찰 서비스 + AutoScaling)"]
+        ecs_keycloak["ecs_keycloak.tf<br>(인증 Keycloak)"]
+        ec2["ec2.tf<br>(Kafka / 모니터링 EC2)"]
+    end
+    class alb,ecs_cluster,ecs_services,ecs_bid,ecs_keycloak,ec2 compute;
+
+    %% 6. 모니터링
+    subgraph Monitor_Layer ["5. 관측 가능성 (Observability)"]
+        cw["cloudwatch.tf<br>(로그 & 알람)"]
+    end
+    class cw doc;
+
+    %% 의존성/흐름 시각화 (인프라 프로비저닝 순서)
+    bootstrap --> versions
+    versions --> network
+    network --> rds
+    network --> alb
+    locals --> ecs_services
+    alb --> ecs_cluster
+    ecs_cluster --> ecs_services
+    ecs_cluster --> ecs_bid
+    ecs_cluster --> ecs_keycloak
+    ec2 --> cw
+    ecs_services --> cw
+```
