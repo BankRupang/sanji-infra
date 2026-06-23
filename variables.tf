@@ -106,7 +106,7 @@ variable "db_allocated_storage" {
 variable "db_engine_version" {
   description = "PostgreSQL 버전 (pgvector 확장 지원 버전)"
   type        = string
-  default     = "16.4"
+  default     = "16.9"
 }
 
 # --- 캐시(ElastiCache Redis) ---
