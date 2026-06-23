@@ -154,6 +154,14 @@ aws ssm put-parameter --overwrite --type SecureString --region $REGION \
 # Grafana 알림용 Slack Webhook (선택)
 aws ssm put-parameter --overwrite --type SecureString --region $REGION \
   --name /sanji/prod/monitoring/slack-webhook-url --value "https://hooks.slack.com/..."
+
+# Langfuse (LLM 트레이싱) 시크릿 (각각 랜덤 문자열 생성)
+NEXTAUTH_SECRET=$(openssl rand -base64 32)
+SALT=$(openssl rand -base64 32)
+aws ssm put-parameter --overwrite --type SecureString --region $REGION \
+  --name /sanji/prod/langfuse/nextauth-secret --value "$NEXTAUTH_SECRET"
+aws ssm put-parameter --overwrite --type SecureString --region $REGION \
+  --name /sanji/prod/langfuse/salt --value "$SALT"
 ```
 
 > Kafka 사설 IP(`/sanji/prod/kafka/private-ip`)는 Terraform이 자동으로 채워두므로

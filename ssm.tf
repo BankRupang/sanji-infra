@@ -95,3 +95,23 @@ resource "aws_ssm_parameter" "monitoring_slack_webhook" {
     ignore_changes = [value]
   }
 }
+
+# Langfuse NextAuth 서명 시크릿 (openssl rand -base64 32 로 생성)
+resource "aws_ssm_parameter" "langfuse_nextauth_secret" {
+  name  = "/${var.project}/${var.environment}/langfuse/nextauth-secret"
+  type  = "SecureString"
+  value = "CHANGE_ME"
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+# Langfuse 비밀번호 해시 솔트 (openssl rand -base64 32 로 생성)
+resource "aws_ssm_parameter" "langfuse_salt" {
+  name  = "/${var.project}/${var.environment}/langfuse/salt"
+  type  = "SecureString"
+  value = "CHANGE_ME"
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
