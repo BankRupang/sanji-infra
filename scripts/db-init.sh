@@ -20,11 +20,11 @@ REGION="ap-northeast-2"
 # ----------------------------------------
 echo "[1/3] 환경 정보 조회 중..."
 
-KAFKA_ID=$(aws ec2 describe-instances \
+KAFKA_ID=$(aws.exe ec2 describe-instances \
   --filters "Name=tag:Role,Values=kafka" "Name=instance-state-name,Values=running" \
   --query "Reservations[0].Instances[0].InstanceId" \
   --region "${REGION}" \
-  --output text)
+  --output text | tr -d '\r')
 
 if [ "${KAFKA_ID}" = "None" ] || [ -z "${KAFKA_ID}" ]; then
   echo "오류: Kafka EC2를 찾을 수 없습니다."
@@ -32,10 +32,10 @@ if [ "${KAFKA_ID}" = "None" ] || [ -z "${KAFKA_ID}" ]; then
 fi
 echo "  Kafka EC2: ${KAFKA_ID}"
 
-RDS_HOST=$(aws rds describe-db-instances \
+RDS_HOST=$(aws.exe rds describe-db-instances \
   --query "DBInstances[?DBInstanceIdentifier=='sanji-prod-postgres'].Endpoint.Address" \
   --region "${REGION}" \
-  --output text)
+  --output text | tr -d '\r')
 
 if [ -z "${RDS_HOST}" ]; then
   echo "오류: RDS 엔드포인트를 찾을 수 없습니다."
@@ -43,12 +43,12 @@ if [ -z "${RDS_HOST}" ]; then
 fi
 echo "  RDS 엔드포인트: ${RDS_HOST}"
 
-DB_PASSWORD=$(aws ssm get-parameter \
+DB_PASSWORD=$(aws.exe ssm get-parameter \
   --name "/sanji/prod/db-password" \
   --with-decryption \
   --region "${REGION}" \
   --query "Parameter.Value" \
-  --output text)
+  --output text | tr -d '\r')
 
 # ----------------------------------------
 # 2. SSM Run Command 실행
@@ -63,13 +63,13 @@ CMD="dnf install -y postgresql15 -q && \
   done && \
   echo 'Schema init complete'"
 
-CMD_ID=$(aws ssm send-command \
+CMD_ID=$(aws.exe ssm send-command \
   --document-name "AWS-RunShellScript" \
   --targets "[{\"Key\":\"instanceids\",\"Values\":[\"${KAFKA_ID}\"]}]" \
   --parameters "{\"commands\":[\"${CMD}\"]}" \
   --region "${REGION}" \
   --query "Command.CommandId" \
-  --output text)
+  --output text | tr -d '\r')
 
 echo "  CommandId: ${CMD_ID}"
 
@@ -79,12 +79,12 @@ echo "  CommandId: ${CMD_ID}"
 echo "[3/3] 실행 결과 대기 중..."
 for i in $(seq 1 30); do
   sleep 5
-  STATUS=$(aws ssm get-command-invocation \
+  STATUS=$( (aws.exe ssm get-command-invocation \
     --command-id "${CMD_ID}" \
     --instance-id "${KAFKA_ID}" \
     --region "${REGION}" \
     --query "Status" \
-    --output text 2>/dev/null || echo "Pending")
+    --output text 2>/dev/null || echo "Pending") | tr -d '\r' )
 
   echo "  상태: ${STATUS} (${i}/30)"
 
@@ -95,7 +95,7 @@ for i in $(seq 1 30); do
   elif [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Cancelled" ]; then
     echo ""
     echo "오류: 스키마 초기화 실패."
-    aws ssm get-command-invocation \
+    aws.exe ssm get-command-invocation \
       --command-id "${CMD_ID}" \
       --instance-id "${KAFKA_ID}" \
       --region "${REGION}" \

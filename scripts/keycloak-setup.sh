@@ -24,11 +24,11 @@ SSM_PARAM_CLIENT_SECRET="/sanji/prod/keycloak/client-secret"
 # 1. 모니터링 EC2 인스턴스 ID 조회
 # ----------------------------------------
 echo "[1/6] 모니터링 EC2 인스턴스 ID 조회 중..."
-MONITORING_ID=$(aws ec2 describe-instances \
+MONITORING_ID=$(aws.exe ec2 describe-instances \
   --filters "Name=tag:Role,Values=monitoring" "Name=instance-state-name,Values=running" \
   --query "Reservations[0].Instances[0].InstanceId" \
   --region "${REGION}" \
-  --output text)
+  --output text | tr -d '\r')
 
 if [ "${MONITORING_ID}" = "None" ] || [ -z "${MONITORING_ID}" ]; then
   echo "오류: 모니터링 EC2를 찾을 수 없습니다."
@@ -40,7 +40,7 @@ echo "  인스턴스 ID: ${MONITORING_ID}"
 # 2. SSM 포트 포워딩 시작 (백그라운드)
 # ----------------------------------------
 echo "[2/6] SSM 포트 포워딩 시작 (localhost:${LOCAL_PORT} -> ${KEYCLOAK_HOST}:${KEYCLOAK_PORT})..."
-aws ssm start-session \
+aws.exe ssm start-session \
   --target "${MONITORING_ID}" \
   --document-name "AWS-StartPortForwardingSessionToRemoteHost" \
   --parameters "{\"host\":[\"${KEYCLOAK_HOST}\"],\"portNumber\":[\"${KEYCLOAK_PORT}\"],\"localPortNumber\":[\"${LOCAL_PORT}\"]}" \
@@ -66,12 +66,12 @@ trap "kill ${SSM_PID} 2>/dev/null; echo '포트 포워딩 종료'" EXIT
 # 3. SSM에서 admin 패스워드 조회
 # ----------------------------------------
 echo "[3/6] admin 패스워드 조회 중..."
-ADMIN_PASSWORD=$(aws ssm get-parameter \
+ADMIN_PASSWORD=$(aws.exe ssm get-parameter \
   --name "/sanji/prod/keycloak/admin-password" \
   --with-decryption \
   --region "${REGION}" \
   --query "Parameter.Value" \
-  --output text)
+  --output text | tr -d '\r')
 
 # ----------------------------------------
 # 4. admin 토큰 발급
@@ -82,7 +82,7 @@ TOKEN=$(curl -s -X POST \
   --resolve "${KEYCLOAK_HOST}:${KEYCLOAK_PORT}:127.0.0.1" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=password&client_id=admin-cli&username=admin&password=${ADMIN_PASSWORD}" \
-  | jq -r '.access_token')
+  | jq.exe -r '.access_token' | tr -d '\r')
 
 if [ "${TOKEN}" = "null" ] || [ -z "${TOKEN}" ]; then
   echo "오류: 토큰 발급 실패. admin 패스워드를 확인하세요."
@@ -98,7 +98,7 @@ REALM_EXISTS=$(curl -s \
   "http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}/admin/realms/sanjijk" \
   --resolve "${KEYCLOAK_HOST}:${KEYCLOAK_PORT}:127.0.0.1" \
   -H "Authorization: Bearer ${TOKEN}" \
-  | jq -r '.realm // empty')
+  | jq.exe -r '.realm // empty' | tr -d '\r')
 
 if [ -z "${REALM_EXISTS}" ]; then
   echo "  sanjijk realm 없음 - import 시작..."
@@ -115,7 +115,7 @@ if [ -z "${REALM_EXISTS}" ]; then
   fi
   echo "  realm import 완료."
 else
-  echo "  sanjijk realm 이미 존재. import 건너뜀."
+  echo "  sanjijk realm 이미 존재. import 건너함."
 fi
 
 # ----------------------------------------
@@ -126,17 +126,17 @@ CLIENT_UUID=$(curl -s \
   "http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}/admin/realms/sanjijk/clients?clientId=user-service" \
   --resolve "${KEYCLOAK_HOST}:${KEYCLOAK_PORT}:127.0.0.1" \
   -H "Authorization: Bearer ${TOKEN}" \
-  | jq -r '.[0].id')
+  | jq.exe -r '.[0].id' | tr -d '\r')
 
 NEW_SECRET=$(curl -s -X POST \
   "http://${KEYCLOAK_HOST}:${KEYCLOAK_PORT}/admin/realms/sanjijk/clients/${CLIENT_UUID}/client-secret" \
   --resolve "${KEYCLOAK_HOST}:${KEYCLOAK_PORT}:127.0.0.1" \
   -H "Authorization: Bearer ${TOKEN}" \
-  | jq -r '.value')
+  | jq.exe -r '.value' | tr -d '\r')
 
 echo "  새 client-secret: ${NEW_SECRET}"
 
-aws ssm put-parameter \
+aws.exe ssm put-parameter \
   --name "${SSM_PARAM_CLIENT_SECRET}" \
   --value "${NEW_SECRET}" \
   --type "SecureString" \

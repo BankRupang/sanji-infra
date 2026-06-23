@@ -17,13 +17,14 @@ if [ ! -f "${BACKUP}" ]; then
   exit 1
 fi
 
-COUNT=$(jq length "${BACKUP}")
+COUNT=$(jq.exe 'length' "${BACKUP}" | tr -d '\r')
 echo "SSM 파라미터 복구 중... (${COUNT}개)"
 
-jq -c '.[]' "${BACKUP}" | while read -r param; do
-  NAME=$(echo "${param}" | jq -r '.Name')
-  VALUE=$(echo "${param}" | jq -r '.Value')
-  TYPE=$(echo "${param}" | jq -r '.Type')
+jq.exe -c '.[]' "${BACKUP}" | tr -d '\r' | while read -r param; do
+
+  NAME=$(echo "${param}" | jq.exe -r '.Name' | tr -d '\r')
+  VALUE=$(echo "${param}" | jq.exe -r '.Value' | tr -d '\r')
+  TYPE=$(echo "${param}" | jq.exe -r '.Type' | tr -d '\r')
 
   # CHANGE_ME는 아직 채우지 않은 값이므로 건너뜁니다.
   if [ "${VALUE}" = "CHANGE_ME" ]; then
@@ -31,7 +32,7 @@ jq -c '.[]' "${BACKUP}" | while read -r param; do
     continue
   fi
 
-  aws ssm put-parameter \
+  aws.exe ssm put-parameter \
     --name "${NAME}" \
     --value "${VALUE}" \
     --type "${TYPE}" \

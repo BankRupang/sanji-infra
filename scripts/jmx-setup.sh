@@ -21,11 +21,11 @@ JMX_DIR="/home/ec2-user/sanji-jk/jmx"
 # 1. Kafka EC2 인스턴스 ID 조회
 # ----------------------------------------
 echo "[1/2] Kafka EC2 인스턴스 ID 조회 중..."
-KAFKA_ID=$(aws ec2 describe-instances \
+KAFKA_ID=$(aws.exe ec2 describe-instances \
   --filters "Name=tag:Role,Values=kafka" "Name=instance-state-name,Values=running" \
   --query "Reservations[0].Instances[0].InstanceId" \
   --region "${REGION}" \
-  --output text)
+  --output text | tr -d '\r')
 
 if [ "${KAFKA_ID}" = "None" ] || [ -z "${KAFKA_ID}" ]; then
   echo "오류: Kafka EC2를 찾을 수 없습니다."
@@ -38,24 +38,24 @@ echo "  인스턴스 ID: ${KAFKA_ID}"
 # ----------------------------------------
 echo "[2/2] JMX Exporter JAR 다운로드 중... (${JMX_JAR})"
 
-CMD_ID=$(aws ssm send-command \
+CMD_ID=$(aws.exe ssm send-command \
   --document-name "AWS-RunShellScript" \
   --targets "[{\"Key\":\"instanceids\",\"Values\":[\"${KAFKA_ID}\"]}]" \
   --parameters "{\"commands\":[\"mkdir -p ${JMX_DIR} && wget -q -O ${JMX_DIR}/${JMX_JAR} ${JMX_URL} && echo OK\"]}" \
   --region "${REGION}" \
   --query "Command.CommandId" \
-  --output text)
+  --output text | tr -d '\r')
 
 echo "  CommandId: ${CMD_ID}"
 
 for i in $(seq 1 20); do
   sleep 5
-  STATUS=$(aws ssm get-command-invocation \
+  STATUS=$( (aws.exe ssm get-command-invocation \
     --command-id "${CMD_ID}" \
     --instance-id "${KAFKA_ID}" \
     --region "${REGION}" \
     --query "Status" \
-    --output text 2>/dev/null || echo "Pending")
+    --output text 2>/dev/null || echo "Pending") | tr -d '\r' )
 
   echo "  상태: ${STATUS} (${i}/20)"
 
@@ -67,7 +67,7 @@ for i in $(seq 1 20); do
   elif [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Cancelled" ]; then
     echo ""
     echo "오류: 다운로드 실패."
-    aws ssm get-command-invocation \
+    aws.exe ssm get-command-invocation \
       --command-id "${CMD_ID}" \
       --instance-id "${KAFKA_ID}" \
       --region "${REGION}" \

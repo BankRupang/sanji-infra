@@ -16,7 +16,7 @@ OUTPUT="scripts/ssm-backup.json"
 
 echo "SSM 파라미터 백업 중... (경로: ${PREFIX})"
 
-aws ssm get-parameters-by-path \
+aws.exe ssm get-parameters-by-path \
   --path "${PREFIX}" \
   --recursive \
   --with-decryption \
@@ -24,6 +24,6 @@ aws ssm get-parameters-by-path \
   --query "Parameters[*].{Name:Name,Value:Value,Type:Type}" \
   --output json > "${OUTPUT}"
 
-COUNT=$(jq length "${OUTPUT}")
+COUNT=$(jq.exe 'length' "${OUTPUT}" | tr -d '\r')
 echo "완료: ${COUNT}개 파라미터를 ${OUTPUT}에 저장했습니다."
 echo "주의: 이 파일에 시크릿이 포함되어 있습니다. git에 커밋하지 마세요."
