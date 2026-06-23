@@ -20,15 +20,8 @@ terraform {
   # 상태 파일(state) 저장 위치
   # --------------------------------------------------------------------------
   # 상태 파일을 S3에 저장하고 DynamoDB로 동시 apply를 막습니다.
-  # (주의: apply 전에 S3 버킷과 DynamoDB 테이블을 Terraform 밖에서 먼저 만들어야 합니다.)
-  #   aws s3api create-bucket --bucket sanji-terraform-state --region ap-northeast-2 \
-  #     --create-bucket-configuration LocationConstraint=ap-northeast-2
-  #   aws s3api put-bucket-versioning --bucket sanji-terraform-state \
-  #     --versioning-configuration Status=Enabled
-  #   aws dynamodb create-table --table-name sanji-terraform-lock \
-  #     --attribute-definitions AttributeName=LockID,AttributeType=S \
-  #     --key-schema AttributeName=LockID,KeyType=HASH \
-  #     --billing-mode PAY_PER_REQUEST --region ap-northeast-2
+  # (주의: 이 폴더를 apply하기 전에 bootstrap 폴더를 먼저 apply해야 합니다.)
+  #   cd bootstrap && terraform init && terraform apply && cd ..
   backend "s3" {
     bucket         = "sanji-terraform-state"
     key            = "prod/terraform.tfstate"

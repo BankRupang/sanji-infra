@@ -305,9 +305,9 @@ terraform destroy
 
 ## 13. 배포 순서 요약 (체크리스트)
 
-1. [ ] S3 버킷(`sanji-terraform-state`)과 DynamoDB 테이블(`sanji-terraform-lock`) 사전 생성 (생성 명령은 `versions.tf` 주석 참고)
+1. [ ] `bootstrap/` 폴더에서 S3 버킷 + DynamoDB 테이블 생성: `cd bootstrap && terraform init && terraform apply`
 2. [ ] `terraform.tfvars` 작성 (`db_password`, `admin_cidr`)
-3. [ ] `terraform init`
+3. [ ] `terraform init` (S3로 상태 이전 여부 물으면 `yes`)
 4. [ ] `terraform apply`
 5. [ ] SSM 시크릿 실제 값 채우기 (5-1, 5-2)
 6. [ ] RDS 스키마 + pgvector 생성 (5-3)
