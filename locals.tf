@@ -34,7 +34,7 @@ locals {
     "config-server" = {
       port    = 8888, cpu = 512, memory = 1024
       schema  = null, redis = false, kafka = false, alb = false
-      secrets = {}, extra_env = {}
+      secrets = {}, extra_env = { SPRING_PROFILES_ACTIVE = "prod,native" }
     }
     "discovery-server" = {
       port      = 8761, cpu = 512, memory = 1024
@@ -84,8 +84,8 @@ locals {
       schema = "payment_schema", redis = true, kafka = true, alb = false
       secrets = {
         SPRING_DATASOURCE_PASSWORD = "db-password"
-        TOSS_CLIENT_KEY            = "toss-client-key"
-        TOSS_SECRET_KEY            = "toss-secret-key"
+        TOSS_PAYMENTS_CLIENT_KEY   = "toss-client-key"
+        TOSS_PAYMENTS_SECRET_KEY   = "toss-secret-key"
       }
       extra_env = {}
     }

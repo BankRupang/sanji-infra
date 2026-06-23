@@ -117,6 +117,21 @@ resource "aws_iam_role_policy" "ec2_ssm_read" {
   policy = data.aws_iam_policy_document.ec2_ssm_read.json
 }
 
+# Grafana CloudWatch datasource가 리전 목록을 조회할 때 필요
+resource "aws_iam_role_policy" "ec2_grafana_ec2" {
+  name = "${local.name}-ec2-grafana-ec2"
+  role = aws_iam_role.ec2.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "GrafanaDescribeRegions"
+      Effect   = "Allow"
+      Actions  = ["ec2:DescribeRegions"]
+      Resource = "*"
+    }]
+  })
+}
+
 # EC2에 역할을 붙이려면 "인스턴스 프로파일"이라는 포장지가 필요합니다.
 resource "aws_iam_instance_profile" "ec2" {
   name = "${local.name}-ec2-profile"
