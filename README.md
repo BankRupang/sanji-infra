@@ -25,27 +25,48 @@ terraform apply
 ## 파일 구성
 
 ```
-.terraform/
-  bootstrap/          S3 버킷 + DynamoDB 테이블 (최초 1회 실행)
-  docs/DEPLOY.md      단계별 배포 가이드
-  versions.tf         Terraform/프로바이더 버전 고정, S3 backend 설정
-  main.tf             리전 설정, 공통 데이터 조회
-  variables.tf        조정 가능한 값 목록
-  terraform.tfvars.example  변수 값 예시
-  locals.tf           서비스 정의표 (ECS 서비스 9개 한 곳에서 관리)
-  network.tf          VPC, 서브넷, 인터넷 게이트웨이
-  security_groups.tf  방화벽 규칙
-  iam.tf              권한 역할 (ECS, EC2, GitHub Actions OIDC)
-  ssm.tf              시크릿 보관함
-  ecr.tf              도커 이미지 저장소
-  rds.tf              PostgreSQL
-  elasticache.tf      Redis
-  alb.tf              로드밸런서
-  ecs_cluster.tf      ECS 클러스터 + 서비스 디스커버리
-  ecs_services.tf     일반 서비스 9개 (for_each)
-  ecs_bid.tf          입찰 서비스 + 오토스케일링
-  ecs_keycloak.tf     인증 서버
-  ec2.tf              Kafka, 모니터링 EC2
-  cloudwatch.tf       CloudWatch 경보
-  outputs.tf          배포 후 접속 주소 출력
+root
+├── bootstrap/                 # [초기화] S3 버킷 + DynamoDB 테이블 (최초 1회 실행)
+├── docs/
+│   └── DEPLOY.md              # [문서화] 단계별 배포 가이드
+│
+│   # ----------------------------------------------------
+│   # 공통 및 환경 설정 (Configuration)
+│   # ----------------------------------------------------
+├── versions.tf                # 테라폼/프로바이더 버전 고정 & S3 backend 설정
+├── main.tf                    # AWS 리전 설정 및 공통 데이터 조회(data source)
+├── variables.tf               # 전역 변수 정의 목록
+├── terraform.tfvars.example   # 전역 변수 입력 값 예시 파일
+├── locals.tf                  # 서비스 정의표 (ECS 서비스 9개 통합 관리)
+├── outputs.tf                 # 배포 완료 후 결과물(접속 주소 등) 출력
+│
+│   # ----------------------------------------------------
+│   # 기본 네트워크 및 보안 (Network & Security)
+│   # ----------------------------------------------------
+├── network.tf                 # VPC, 서브넷, 인터넷 게이트웨이(IGW)
+├── security_groups.tf         # 방화벽 보안 그룹(SG) 규칙
+├── iam.tf                     # AWS 권한 역할 (ECS, EC2, GitHub Actions OIDC)
+├── ssm.tf                     # 파라미터 스토어 / 시크릿 관리 보관함
+│
+│   # ----------------------------------------------------
+│   # 데이터베이스 및 저장소 (Data Stores)
+│   # ----------------------------------------------------
+├── ecr.tf                     # Docker 컨테이너 이미지 저장소
+├── rds.tf                     # RDS(PostgreSQL) 데이터베이스
+├── elasticache.tf             # ElasiCache(Redis) 캐시 서버
+│
+│   # ----------------------------------------------------
+│   # 애플리케이션 및 컴퓨팅 (Compute & Routing)
+│   # ----------------------------------------------------
+├── alb.tf                     # Application Load Balancer 및 라우팅 규칙
+├── ecs_cluster.tf             # ECS 클러스터 및 서비스 디스커버리(Cloud Map)
+├── ecs_services.tf            # 일반 ECS 서비스 9개 통합 배포 (for_each 사용)
+├── ecs_bid.tf                 # 입찰 전용 서비스 + 전용 Auto Scaling 규칙
+├── ecs_keycloak.tf            # Keycloak 인증 서버 전용 설정
+├── ec2.tf                     # Kafka 및 모니터링용 전용 EC2 인스턴스
+│
+│   # ----------------------------------------------------
+│   # 모니터링 (Observability)
+│   # ----------------------------------------------------
+└── cloudwatch.tf              # CloudWatch 로그 그룹 및 경보(Alarm) 설정
 ```
