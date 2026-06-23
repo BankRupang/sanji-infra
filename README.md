@@ -21,11 +21,17 @@ terraform init    # "로컬 상태를 S3로 옮길까요?" → yes
 terraform plan
 terraform apply
 
-# 3) 인프라 제거 후 재배포 시 SSM 파라미터 값 보존
-bash scripts/ssm-backup.sh   # destroy 전 백업
+# 3) 인프라 제거 후 재배포 시 전체 복구 절차
+bash scripts/ssm-backup.sh    # destroy 전 SSM 파라미터 백업
 terraform destroy
 terraform apply
-bash scripts/ssm-restore.sh  # apply 후 복구
+
+bash scripts/ssm-restore.sh   # SSM 파라미터 복구
+# GitHub Actions에서 Deploy EC2 수동 실행 (Kafka, 모니터링 EC2 배포)
+bash scripts/jmx-setup.sh     # Kafka EC2에 JMX Exporter JAR 다운로드
+bash scripts/db-init.sh       # RDS 스키마 초기화 (psql 스크립트 실행)
+bash scripts/keycloak-setup.sh # Keycloak realm import + client-secret 발급 + SSM 저장
+# GitHub Actions에서 Deploy ECS 자동 실행 (main 브랜치 push 시)
 ```
 
 ## 파일 구성
@@ -35,7 +41,10 @@ root
 ├── bootstrap/                 # [초기화] S3 버킷 생성 (최초 1회 실행)
 ├── scripts/
 │   ├── ssm-backup.sh          # destroy 전 SSM 파라미터 값 백업
-│   └── ssm-restore.sh         # apply 후 SSM 파라미터 값 복구
+│   ├── ssm-restore.sh         # apply 후 SSM 파라미터 값 복구
+│   ├── jmx-setup.sh           # Kafka EC2에 JMX Exporter JAR 다운로드
+│   ├── db-init.sh             # RDS 스키마 초기화 (Kafka EC2 경유 psql 실행)
+│   └── keycloak-setup.sh      # Keycloak realm import + client-secret 발급
 ├── docs/
 │   └── DEPLOY.md              # [문서화] 단계별 배포 가이드
 │
