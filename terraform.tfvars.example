@@ -27,7 +27,7 @@ db_password = "여기에-강력한-비밀번호-입력" # 필수. 노출 주의
 ec2_key_name = ""
 
 # --- CI/CD ---
-github_repo = "BankRupang/sanji-jk"
+github_repo = "BankRupang/san-ji-jik-kyeng"
 
 # --- HTTPS (선택) ---
 # ACM 인증서를 발급했다면 ARN을 넣으면 443 리스너가 자동 생성됩니다.
