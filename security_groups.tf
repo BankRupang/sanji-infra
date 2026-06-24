@@ -1,13 +1,13 @@
 # ============================================================================
 # 보안 그룹(Security Group)
 # ============================================================================
-# 보안 그룹은 자원 앞에 선 "방화벽"입니다.
+# 보안 그룹은 자원 앞에 선 방화벽입니다.
 # 인바운드(들어오는 트래픽)는 꼭 필요한 것만 허용합니다. 외부로 열린 문은 ALB 하나뿐입니다.
 #
-# 두 보안 그룹이 서로를 가리키면(예: ECS<->모니터링) 순환 참조가 생기므로,
+# 두 보안 그룹이 서로를 가리키면(예: ECS ↔ 모니터링) 순환 참조가 생기므로
 # 규칙은 보안 그룹과 분리한 aws_security_group_rule 로 따로 답니다.
 
-# 빈 보안 그룹 5개를 먼저 만들고, 규칙은 아래에서 하나씩 붙입니다.
+# 빈 보안 그룹 5개를 먼저 만들고 규칙은 아래에서 붙입니다.
 resource "aws_security_group" "alb" {
   name        = "${local.name}-alb-sg"
   description = "ALB front door"
@@ -70,7 +70,7 @@ resource "aws_security_group_rule" "egress_all" {
   description       = "allow all outbound"
 }
 
-# --- ALB: 외부에서 오는 HTTP(80) 허용 (그리고 HTTPS는 인증서 있을 때) ---
+# --- ALB: 외부에서 오는 HTTP(80) 허용 (HTTPS는 인증서 있을 때) ---
 resource "aws_security_group_rule" "alb_in_http" {
   type              = "ingress"
   security_group_id = aws_security_group.alb.id
@@ -104,7 +104,7 @@ resource "aws_security_group_rule" "ecs_in_from_alb" {
   description              = "ALB to gateway"
 }
 
-# 2) 서비스끼리 서로 호출(Eureka, Config, STOMP 등). 같은 SG 안끼리 전부 허용.
+# 2) 서비스끼리 서로 호출(Eureka, Config, STOMP 등) 같은 SG 안끼리 전부 허용
 resource "aws_security_group_rule" "ecs_in_self" {
   type                     = "ingress"
   security_group_id        = aws_security_group.ecs.id
@@ -137,15 +137,17 @@ resource "aws_security_group_rule" "rds_in_from_ecs" {
   description              = "ECS to PostgreSQL"
 }
 
-# Kafka EC2에서 DB 스키마 초기화 등 관리 작업용
-resource "aws_security_group_rule" "rds_in_from_kafka" {
+# 모니터링 EC2에서 DB 스키마 초기화 등 관리 작업용
+# RDS가 Private Subnet에 있어 SQL 파일을 실행하려면 VPC 안에 있는 무언가가 대신 실행해줘야 함
+# db_init만을 위해 별도 EC2(Bastion)를 만드는 것은 실익이 없다고 판단했음
+resource "aws_security_group_rule" "rds_in_from_monitoring" {
   type                     = "ingress"
   security_group_id        = aws_security_group.rds.id
   from_port                = 5432
   to_port                  = 5432
   protocol                 = "tcp"
-  source_security_group_id = aws_security_group.kafka.id
-  description              = "Kafka EC2 admin access to PostgreSQL"
+  source_security_group_id = aws_security_group.monitoring.id
+  description              = "Monitoring EC2 admin access to PostgreSQL"
 }
 
 # --- Redis: ECS 태스크에서 오는 6379만 허용 ---

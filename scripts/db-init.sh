@@ -7,9 +7,9 @@
 #
 # 전제 조건:
 #   - AWS CLI 설치 및 인증 완료
-#   - Kafka EC2가 실행 중이고 SSM Agent가 Online 상태
+#   - 모니터링 EC2가 실행 중이고 SSM Agent가 Online 상태
 #   - RDS가 생성 완료된 상태
-#   - Kafka EC2에 sanji-jk 저장소가 배포되어 있어야 함 (db/init/*.sql 존재)
+#   - 모니터링 EC2에 sanji-jk 저장소가 배포되어 있어야 함 (db/init/*.sql 존재)
 
 set -euo pipefail
 
@@ -20,17 +20,17 @@ REGION="ap-northeast-2"
 # ----------------------------------------
 echo "[1/3] 환경 정보 조회 중..."
 
-KAFKA_ID=$(aws.exe ec2 describe-instances \
-  --filters "Name=tag:Role,Values=kafka" "Name=instance-state-name,Values=running" \
+MONITORING_ID=$(aws.exe ec2 describe-instances \
+  --filters "Name=tag:Role,Values=monitoring" "Name=instance-state-name,Values=running" \
   --query "Reservations[0].Instances[0].InstanceId" \
   --region "${REGION}" \
   --output text | tr -d '\r')
 
-if [ "${KAFKA_ID}" = "None" ] || [ -z "${KAFKA_ID}" ]; then
-  echo "오류: Kafka EC2를 찾을 수 없습니다."
+if [ "${MONITORING_ID}" = "None" ] || [ -z "${MONITORING_ID}" ]; then
+  echo "오류: 모니터링 EC2를 찾을 수 없습니다."
   exit 1
 fi
-echo "  Kafka EC2: ${KAFKA_ID}"
+echo "  모니터링 EC2: ${MONITORING_ID}"
 
 RDS_HOST=$(aws.exe rds describe-db-instances \
   --query "DBInstances[?DBInstanceIdentifier=='sanji-prod-postgres'].Endpoint.Address" \
@@ -53,7 +53,7 @@ DB_PASSWORD=$(aws.exe ssm get-parameter \
 # ----------------------------------------
 # 2. SSM Run Command 실행
 # ----------------------------------------
-echo "[2/3] Kafka EC2에서 스키마 초기화 실행 중..."
+echo "[2/3] 모니터링 EC2에서 스키마 초기화 실행 중..."
 
 CMD="dnf install -y postgresql15 -q && \
   export PGPASSWORD='${DB_PASSWORD}' && \
@@ -65,7 +65,7 @@ CMD="dnf install -y postgresql15 -q && \
 
 CMD_ID=$(aws.exe ssm send-command \
   --document-name "AWS-RunShellScript" \
-  --targets "[{\"Key\":\"instanceids\",\"Values\":[\"${KAFKA_ID}\"]}]" \
+  --targets "[{\"Key\":\"instanceids\",\"Values\":[\"${MONITORING_ID}\"]}]" \
   --parameters "{\"commands\":[\"${CMD}\"]}" \
   --region "${REGION}" \
   --query "Command.CommandId" \
@@ -81,7 +81,7 @@ for i in $(seq 1 30); do
   sleep 5
   STATUS=$( (aws.exe ssm get-command-invocation \
     --command-id "${CMD_ID}" \
-    --instance-id "${KAFKA_ID}" \
+    --instance-id "${MONITORING_ID}" \
     --region "${REGION}" \
     --query "Status" \
     --output text 2>/dev/null || echo "Pending") | tr -d '\r' )
@@ -97,7 +97,7 @@ for i in $(seq 1 30); do
     echo "오류: 스키마 초기화 실패."
     aws.exe ssm get-command-invocation \
       --command-id "${CMD_ID}" \
-      --instance-id "${KAFKA_ID}" \
+      --instance-id "${MONITORING_ID}" \
       --region "${REGION}" \
       --query "StandardErrorContent" \
       --output text
