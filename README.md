@@ -8,38 +8,41 @@
 
 자세한 내용은 [DEPLOY.md](docs/DEPLOY.md)를 참고해 주세요.
 
-S3 backend를 먼저 만들어야 합니다. `bootstrap/` 폴더를 먼저 실행합니다.
+S3 backend와 SSM Parameter Store를 먼저 만들어야 합니다. `bootstrap/` 폴더를 먼저 실행합니다.
 
 ```bash
-# 1) S3 버킷 생성 (최초 1회)
+# 1) S3 버킷 + SSM Parameter Store 생성 (최초 1회)
 cd bootstrap
 terraform init && terraform apply
 cd ..
+# AWS 콘솔 또는 CLI로 SSM 파라미터에 실제 값을 직접 입력합니다.
 
 # 2) 본 인프라 배포
 terraform init    # "로컬 상태를 S3로 옮길까요?" → yes
-terraform plan
-terraform apply
+terraform plan    # -out=tfplan → 실행 계획 파일 생성
+terraform apply   # 실행 계획 파일을 생성한 경우 terraform apply tfplan
 
 # 3) 인프라 제거 후 재배포 시 전체 복구 절차
-bash scripts/ssm-backup.sh    # destroy 전 SSM 파라미터 백업
 terraform destroy
 terraform apply
-
-bash scripts/ssm-restore.sh   # SSM 파라미터 복구
 # GitHub Actions에서 Deploy EC2 수동 실행 (Kafka, 모니터링 EC2 배포)
-bash scripts/jmx-setup.sh     # Kafka EC2에 JMX Exporter JAR 다운로드
-bash scripts/db-init.sh       # RDS 스키마 초기화 (psql 스크립트 실행)
+bash scripts/jmx-setup.sh      # Kafka EC2에 JMX Exporter JAR 다운로드
+bash scripts/db-init.sh        # RDS 스키마 초기화 (psql 스크립트 실행)
 bash scripts/keycloak-setup.sh # Keycloak realm import + client-secret 발급 + SSM 저장
 # GitHub Actions에서 Deploy ECS 수동 실행 (workflow_dispatch)
-# ECR 이미지가 destroy 시 함께 삭제되므로 main push와 무관하게 수동으로 한 번 실행해야 앱이 기동됨
+
+# SSM 파라미터 값 저장
+# SSM Parameter Storage는 destroy되지 않기 때문에 별도로 저장할 필요는 없지만,
+# 다른 곳으로 import할 필요가 있을 경우 아래 스크립트를 실행해주세요.
+bash scripts/ssm-backup.sh    # ssm-backup.json 파일 생성
+bash scripts/ssm-restore.sh   # ssm-backup.json 파일 적용
 ```
 
 ## 파일 구성
 
 ```
 root
-├── bootstrap/                 # [초기화] S3 버킷 생성 (최초 1회 실행)
+├── bootstrap/                 # [초기화] S3 버킷 + SSM Parameter Store 생성 (최초 1회 실행)
 ├── scripts/
 │   ├── ssm-backup.sh          # destroy 전 SSM 파라미터 값 백업
 │   ├── ssm-restore.sh         # apply 후 SSM 파라미터 값 복구
@@ -109,7 +112,7 @@ graph TD
 
     %% 1. 문서 및 초기화
     subgraph Docs_Init ["0. 준비 및 문서 (Docs & Init)"]
-        bootstrap["bootstrap/<br>(S3 버킷 생성)"]
+        bootstrap["bootstrap/<br>(S3 버킷 + SSM 보관함)"]
         deploy["docs/DEPLOY.md<br>(배포 가이드)"]
     end
     class bootstrap,deploy doc;
