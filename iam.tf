@@ -66,7 +66,8 @@ resource "aws_iam_role" "ecs_task" {
 
 # ----------------------------------------------------------------------------
 # 3) EC2(Kafka, 모니터링) 인스턴스 역할
-#    SSM Run Command 수신 + ECR pull + CloudWatch 읽기(Grafana 데이터소스) + SSM 파라미터 읽기
+#    SSM Run Command 수신 + CloudWatch 읽기(Grafana 데이터소스) + SSM 파라미터 읽기
+#    EC2는 커스텀 이미지가 없고 퍼블릭 이미지(Docker Hub/ghcr.io)만 사용하므로 ECR 권한 불필요
 # ----------------------------------------------------------------------------
 data "aws_iam_policy_document" "ec2_assume" {
   statement {
@@ -86,11 +87,6 @@ resource "aws_iam_role" "ec2" {
 resource "aws_iam_role_policy_attachment" "ec2_ssm" {
   role       = aws_iam_role.ec2.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-resource "aws_iam_role_policy_attachment" "ec2_ecr" {
-  role       = aws_iam_role.ec2.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
 # Grafana가 RDS/ElastiCache/ALB 지표를 CloudWatch에서 읽기 위함
