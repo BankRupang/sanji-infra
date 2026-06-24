@@ -40,9 +40,11 @@ bash scripts/ssm-restore.sh   # ssm-backup.json 파일 적용
 
 ## 파일 구성
 
+코드에 대한 자세한 설명은 [INTRODUCTION.md](docs/INTRODUCTION.md)를 참고해 주세요.
+
 ```
 root
-├── bootstrap/                 # [초기화] S3 버킷 + SSM Parameter Store 생성 (최초 1회 실행)
+├── bootstrap/                 # S3 버킷 + SSM Parameter Store 생성 (최초 1회 실행)
 ├── scripts/
 │   ├── ssm-backup.sh          # destroy 전 SSM 파라미터 값 백업
 │   ├── ssm-restore.sh         # apply 후 SSM 파라미터 값 복구
@@ -50,7 +52,8 @@ root
 │   ├── db-init.sh             # RDS 스키마 초기화 (Kafka EC2 경유 psql 실행)
 │   └── keycloak-setup.sh      # Keycloak realm import + client-secret 발급
 ├── docs/
-│   └── DEPLOY.md              # [문서화] 단계별 배포 가이드
+│   └── DEPLOY.md              # 단계별 배포 가이드 문서
+│   └── INTRODUCTION.md        # 코드 설명 문서
 │
 │   # ----------------------------------------------------
 │   # 공통 및 환경 설정 (Configuration)
