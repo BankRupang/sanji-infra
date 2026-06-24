@@ -220,7 +220,7 @@ docker push $REGISTRY/sanji/gateway-server:latest
 
 ```bash
 # Kafka EC2
-cd /home/ec2-user/sanji-jk
+cd /home/ec2-user/san-ji-jik-kyeng
 git pull origin main
 docker compose -f docker-compose.kafka.yml pull
 docker compose -f docker-compose.kafka.yml up -d

@@ -15,7 +15,7 @@ REGION="ap-northeast-2"
 JMX_VERSION="1.0.1"
 JMX_JAR="jmx_prometheus_javaagent-${JMX_VERSION}.jar"
 JMX_URL="https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/${JMX_VERSION}/${JMX_JAR}"
-JMX_DIR="/home/ec2-user/sanji-jk/jmx"
+JMX_DIR="/home/ec2-user/san-ji-jik-kyeng/jmx"
 
 # ----------------------------------------
 # 1. Kafka EC2 인스턴스 ID 조회
@@ -69,7 +69,7 @@ for i in $(seq 1 20); do
     aws.exe ssm send-command \
       --document-name "AWS-RunShellScript" \
       --targets "[{\"Key\":\"instanceids\",\"Values\":[\"${KAFKA_ID}\"]}]" \
-      --parameters "{\"commands\":[\"docker compose -f /home/ec2-user/sanji-jk/docker-compose.kafka.yml restart kafka\"]}" \
+      --parameters "{\"commands\":[\"docker compose -f /home/ec2-user/san-ji-jik-kyeng/docker-compose.kafka.yml restart kafka\"]}" \
       --region "${REGION}" > /dev/null
     echo "재시작 요청 완료."
     exit 0

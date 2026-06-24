@@ -57,8 +57,8 @@ echo "[2/3] 모니터링 EC2에서 스키마 초기화 실행 중..."
 
 CMD="dnf install -y postgresql15 -q && \
   export PGPASSWORD='${DB_PASSWORD}' && \
-  for f in /home/ec2-user/sanji-jk/db/init/*.sql; do \
-    echo \"Running \$f\"; \
+  for f in /home/ec2-user/san-ji-jik-kyeng/db/init/*.sql; do \
+    printf 'Running %s\n' \$f; \
     psql -h ${RDS_HOST} -p 5432 -U sanji -d sanji -f \$f; \
   done && \
   echo 'Schema init complete'"
