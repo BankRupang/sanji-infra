@@ -201,7 +201,7 @@ resource "aws_iam_role" "github_actions" {
   assume_role_policy = data.aws_iam_policy_document.github_assume[0].json
 }
 
-# CI/CD가 할 수 있는 일: ECR push, ECS 롤링 배포 트리거, EC2 배포(SSM), PassRole
+# CI/CD에서 하는 일: ECR push, ECS 롤링 배포 트리거, EC2 배포(SSM), PassRole
 data "aws_iam_policy_document" "github_actions" {
   count = var.enable_github_oidc ? 1 : 0
 
@@ -256,7 +256,7 @@ data "aws_iam_policy_document" "github_actions" {
     actions   = ["ec2:DescribeInstances"]
     resources = ["*"]
   }
-  # ECS 새 태스크가 역할을 쓰려면 CI 역할이 그 역할을 넘겨줄 수 있어야 함
+  # ECS 새 태스크가 역할을 쓰려면 CI 역할이 그 역할을 넘겨줄 수 있어야 합니다.
   statement {
     sid       = "PassEcsRoles"
     actions   = ["iam:PassRole"]

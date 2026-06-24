@@ -2,10 +2,10 @@
 # EC2: Kafka 브로커, 모니터링(PLG) 서버
 # ============================================================================
 # stateful(데이터가 디스크에 남아야 하는) Kafka와 모니터링은
-# 컨테이너가 통째로 교체되는 Fargate 대신, 디스크가 유지되는 EC2 + Docker Compose로 운영.
+# 컨테이너가 통째로 교체되는 Fargate 대신 디스크가 유지되는 EC2 + Docker Compose로 운영합니다
 #
 # 실제 배포(git clone, compose up)는 SSM Run Command로 합니다. (배포 가이드 참고)
-# 여기 user_data는 도커/도커컴포즈/git/awscli 같은 "도구 설치"까지만 합니다.
+# 여기 user_data는 도커/도커컴포즈/git/awscli 같은 도구 설치까지만 진행합니다.
 
 locals {
   # EC2 부팅 시 1회 실행되는 설치 스크립트 (Kafka, 모니터링 공통)
@@ -23,7 +23,7 @@ locals {
       -o /usr/local/lib/docker/cli-plugins/docker-compose
     chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-    # 이후 단계(레포 clone, compose pull && up)는 SSM Run Command로 실행합니다.
+    # 이후 단계(레포 clone, compose pull && up)는 CD 단계에서 SSM Run Command로 실행합니다.
     # (Amazon Linux 2023은 SSM Agent와 AWS CLI v2가 기본 설치되어 있습니다)
   EOT
 }
@@ -35,7 +35,7 @@ resource "aws_instance" "kafka" {
   subnet_id                   = local.primary_public_subnet_id
   vpc_security_group_ids      = [aws_security_group.kafka.id]
   iam_instance_profile        = aws_iam_instance_profile.ec2.name
-  associate_public_ip_address = true # NAT 없이 ECR/외부로 나가기 위함
+  associate_public_ip_address = true # NAT 없이 Docker Hub/Maven Central 등 외부로 나가기 위함
   key_name                    = var.ec2_key_name != "" ? var.ec2_key_name : null
   user_data                   = local.ec2_bootstrap
 

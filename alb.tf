@@ -1,30 +1,29 @@
 # ============================================================================
 # ALB: 애플리케이션 로드밸런서 (유일한 외부 진입점)
 # ============================================================================
-# Nginx 대신 ALB 단독. WebSocket을 기본 지원하고 관리형 이중화가 됩니다.
 # ALB는 gateway-server 한 곳으로만 트래픽을 보냅니다.
-# (입찰 WebSocket도 gateway를 거쳐 내부 bid 서비스로 연결됩니다)
+# 입찰 WebSocket도 gateway를 거쳐 내부 bid 서비스로 연결됩니다.
 
 resource "aws_lb" "main" {
   name               = "${local.name}-alb"
   load_balancer_type = "application"
   internal           = false # 인터넷에서 접근 가능
   security_groups    = [aws_security_group.alb.id]
-  # ALB는 규칙상 최소 2개 AZ의 서브넷이 필요합니다.
+  # ALB는 규칙상 최소 2개 AZ의 서브넷이 필요함
   subnets = [for s in aws_subnet.public : s.id]
 
   tags = { Name = "${local.name}-alb" }
 }
 
-# 대상 그룹: ALB가 트래픽을 보낼 "목적지 묶음". 여기서는 gateway 태스크들입니다.
+# 대상 그룹: ALB가 트래픽을 보낼 목적지 묶음 (gateway 태스크들)
 resource "aws_lb_target_group" "gateway" {
   name        = "${local.name}-gateway-tg"
   port        = 8000
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
-  target_type = "ip" # Fargate(awsvpc)는 IP로 등록됩니다
+  target_type = "ip" # Fargate(awsvpc)는 IP로 등록됨
 
-  # 헬스체크: 이 경로가 200을 주면 "정상"으로 판단하고 트래픽을 보냅니다.
+  # 헬스체크 200 통과하면 정상으로 판단하고 트래픽을 보냅니다.
   health_check {
     path                = "/actuator/health"
     matcher             = "200"
@@ -34,7 +33,7 @@ resource "aws_lb_target_group" "gateway" {
     unhealthy_threshold = 3
   }
 
-  # WebSocket 연결이 같은 gateway 태스크로 유지되도록 끈끈함(stickiness) 활성화
+  # WebSocket 연결이 같은 gateway 태스크로 유지되도록
   stickiness {
     type            = "lb_cookie"
     cookie_duration = 3600

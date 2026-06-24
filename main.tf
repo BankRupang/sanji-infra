@@ -6,8 +6,6 @@
 provider "aws" {
   region = var.aws_region
 
-  # 여기 적은 태그가 Terraform이 만드는 "모든" 리소스에 자동으로 붙습니다.
-  # 콘솔에서 "이건 Terraform이 만든 거구나"를 한눈에 알 수 있어 관리가 쉽습니다.
   default_tags {
     tags = {
       Project     = var.project
@@ -17,8 +15,6 @@ provider "aws" {
   }
 }
 
-# --- 아래 data 블록은 "새 리소스를 만드는 게 아니라" 기존 정보를 조회만 합니다 ---
-
 # 현재 사용 중인 AWS 계정 ID (IAM 정책에서 계정 번호가 필요할 때 사용)
 data "aws_caller_identity" "current" {}
 
@@ -26,7 +22,6 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 # EC2(Kafka, 모니터링)에 쓸 최신 Amazon Linux 2023 이미지(AMI)를 자동으로 찾습니다.
-# AMI ID는 리전마다 다르고 자주 바뀌므로 직접 적지 않고 조회로 가져옵니다.
 data "aws_ami" "al2023" {
   most_recent = true
   owners      = ["amazon"]
