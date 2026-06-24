@@ -81,20 +81,28 @@ terraform output
 
 ---
 
-## 4. apply 후 꼭 해야 하는 마무리 작업
+## 4. SSM 파라미터 값 주입
 
 `bootstrap apply`에서 시크릿 파라미터들을 **"CHANGE_ME"** 로 미리 만들어 두었습니다.
 (DB 비밀번호는 `terraform.tfvars`로 메인 apply 때 자동 등록됩니다.)
-이제 실제 값을 아래처럼 채웁니다. (최초 1회만 하면 됩니다.)
+아래 순서로 실제 값을 채웁니다. (최초 1회만 하면 됩니다.)
 
-### 4-1. 앱 시크릿 실제 값 채우기
+```bash
+# 1) 파라미터 경로가 미리 채워진 JSON 템플릿 생성
+bash scripts/ssm-init.sh
 
-AWS 콘솔 > Systems Manager > Parameter Store 에서 아래 파라미터를 찾아 실제 값으로 수정합니다.
+# 2) 생성된 scripts/ssm-backup.json을 열어 CHANGE_ME를 실제 값으로 교체
+#    (없는 항목은 CHANGE_ME로 두면 ssm-restore.sh가 건너뜁니다)
+
+# 3) AWS에 일괄 등록
+bash scripts/ssm-restore.sh
+```
+
+파라미터 경로와 내용은 다음과 같습니다.
 
 | 파라미터 경로 | 내용 |
 | --- | --- |
-| `/sanji/prod/ai/gemini-api-key` | Gemini API 키 |
-| `/sanji/prod/keycloak/client-secret` | Keycloak 클라이언트 시크릿 |
+| `/sanji/prod/keycloak/client-secret` | Keycloak 클라이언트 시크릿 (6-3단계 이후 자동 발급) |
 | `/sanji/prod/keycloak/admin-password` | Keycloak 관리자 비밀번호 |
 | `/sanji/prod/user/manager-key` | 사용자 서비스 매니저 키 |
 | `/sanji/prod/user/master-key` | 사용자 서비스 마스터 키 |
@@ -102,21 +110,15 @@ AWS 콘솔 > Systems Manager > Parameter Store 에서 아래 파라미터를 찾
 | `/sanji/prod/toss/secret-key` | Toss Payments 시크릿 키 |
 | `/sanji/prod/slack/webhook-url` | Slack Webhook URL |
 | `/sanji/prod/slack/bot-token` | Slack 봇 토큰 |
-
-> 값이 없는 항목은 건너뛰어도 됩니다.
-> Terraform은 이 값을 다시 덮어쓰지 않습니다. (코드에 `ignore_changes` 가 걸려 있습니다.)
-
-### 4-2. EC2용 시크릿 채우기
-
-| 파라미터 경로 | 내용 |
-| --- | --- |
-| `/sanji/prod/kafka/cluster-id` | Kafka Cluster ID (`kafka-storage.sh random-uuid`로 생성, 최초 1회) |
+| `/sanji/prod/ai/gemini-api-key` | Gemini API 키 |
+| `/sanji/prod/kafka/cluster-id` | Kafka Cluster ID (`kafka-storage.sh random-uuid`로 생성) |
 | `/sanji/prod/monitoring/grafana-admin-password` | Grafana 관리자 비밀번호 |
 | `/sanji/prod/monitoring/slack-webhook-url` | Grafana 알림용 Slack Webhook (선택) |
 | `/sanji/prod/langfuse/nextauth-secret` | Langfuse NextAuth 시크릿 (`openssl rand -base64 32`으로 생성) |
 | `/sanji/prod/langfuse/salt` | Langfuse Salt (`openssl rand -base64 32`으로 생성) |
 
-> `/sanji/prod/kafka/private-ip`는 Terraform이 자동으로 채워두므로 직접 등록할 필요가 없습니다.
+> `ssm-backup.json`에 시크릿이 담기므로 git에 올리지 마세요.
+> Terraform은 한 번 채운 값을 다시 덮어쓰지 않습니다. (`ignore_changes` 설정)
 
 ---
 
