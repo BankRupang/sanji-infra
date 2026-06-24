@@ -71,8 +71,52 @@ resource "aws_s3_bucket_public_access_block" "tf_state" {
 }
 
 # ----------------------------------------------------------------------------
+# SSM Parameter Store: 메인 스택을 destroy해도 살아남아야 하는 시크릿
+# ----------------------------------------------------------------------------
+# 이 파라미터들은 메인 인프라(ECS, RDS 등)와 수명이 다릅니다.
+# 인프라를 껐다 켜도 값을 다시 입력할 필요가 없도록 bootstrap에 둡니다.
+# apply 후 ssm-restore.sh 를 최초 1회 실행해서 실제 값을 채웁니다.
+
+locals {
+  bootstrap_secrets = {
+    "keycloak/client-secret"         = "/sanji/prod/keycloak/client-secret"
+    "keycloak/admin-password"        = "/sanji/prod/keycloak/admin-password"
+    "user/manager-key"               = "/sanji/prod/user/manager-key"
+    "user/master-key"                = "/sanji/prod/user/master-key"
+    "toss/client-key"                = "/sanji/prod/toss/client-key"
+    "toss/secret-key"                = "/sanji/prod/toss/secret-key"
+    "slack/webhook-url"              = "/sanji/prod/slack/webhook-url"
+    "slack/bot-token"                = "/sanji/prod/slack/bot-token"
+    "ai/gemini-api-key"              = "/sanji/prod/ai/gemini-api-key"
+    "kafka/cluster-id"               = "/sanji/prod/kafka/cluster-id"
+    "monitoring/grafana-admin-password" = "/sanji/prod/monitoring/grafana-admin-password"
+    "monitoring/slack-webhook-url"   = "/sanji/prod/monitoring/slack-webhook-url"
+    "langfuse/nextauth-secret"       = "/sanji/prod/langfuse/nextauth-secret"
+    "langfuse/salt"                  = "/sanji/prod/langfuse/salt"
+  }
+}
+
+resource "aws_ssm_parameter" "secrets" {
+  for_each = local.bootstrap_secrets
+
+  name  = each.value
+  type  = "SecureString"
+  value = "CHANGE_ME"
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = [value]
+  }
+}
+
+# ----------------------------------------------------------------------------
 # 출력: apply 후 확인용
 # ----------------------------------------------------------------------------
 output "s3_bucket_name" {
   value = aws_s3_bucket.tf_state.bucket
+}
+
+output "ssm_parameter_names" {
+  value       = [for p in aws_ssm_parameter.secrets : p.name]
+  description = "생성된 SSM 파라미터 목록"
 }

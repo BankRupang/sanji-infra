@@ -1,16 +1,26 @@
 # ============================================================================
-# SSM Parameter Store: 시크릿 보관함
+# SSM Parameter Store
 # ============================================================================
-# 시크릿은 코드에 직접 쓰지 않고 SSM Parameter Store(SecureString)에 둡니다.
+# 시크릿은 두 곳으로 나뉩니다.
 #
-# 중요한 패턴 두 가지:
-#   1) db_password 만 Terraform 변수로 직접 넣습니다. (RDS 생성에 필요하기 때문)
-#   2) 나머지 시크릿은 "CHANGE_ME" 빈 칸으로만 만들어 둡니다.
-#      실제 값은 AWS 콘솔이나 CLI로 따로 채웁니다.
-#      lifecycle.ignore_changes 가 걸려 있어, 사람이 채운 값을
-#      Terraform이 다시 "CHANGE_ME"로 덮어쓰지 않습니다.
+# [bootstrap] 인프라를 destroy해도 살아남는 시크릿
+#   - keycloak, toss, slack, gemini, grafana, langfuse, kafka/cluster-id
+#   - .terraform/bootstrap/main.tf 에서 관리
+#   - 이 파일에서는 data 소스로 읽어옵니다.
+#
+# [메인 스택] 인프라와 수명이 같은 값
+#   - kafka/private-ip: EC2 인스턴스가 뜰 때 Terraform이 자동으로 채움
 
-# --- 앱이 쓰는 시크릿들의 경로표 ---
+# DB 비밀번호: tfvars의 var.db_password 로 RDS를 만들고, 같은 값을 SSM에도 저장합니다.
+# ECS 앱은 SSM 경로로 읽습니다. (bootstrap 대상 아님 - tfvars에 값이 남아있으므로)
+resource "aws_ssm_parameter" "db_password" {
+  name  = "/${var.project}/${var.environment}/db/password"
+  type  = "SecureString"
+  value = var.db_password
+}
+
+# ---- Bootstrap 시크릿 읽기 ----
+
 locals {
   app_secret_paths = {
     "keycloak-client-secret"  = "/${var.project}/${var.environment}/keycloak/client-secret"
@@ -25,93 +35,26 @@ locals {
   }
 }
 
-# DB 비밀번호: 변수 값으로 채웁니다. RDS와 같은 값을 앱도 SSM으로 읽습니다.
-resource "aws_ssm_parameter" "db_password" {
-  name  = "/${var.project}/${var.environment}/db/password"
-  type  = "SecureString"
-  value = var.db_password
-}
-
-# 나머지 앱 시크릿: 빈 칸으로 생성. 실제 값은 배포 가이드대로 따로 입력.
-resource "aws_ssm_parameter" "app_secrets" {
+data "aws_ssm_parameter" "app_secrets" {
   for_each = local.app_secret_paths
-
-  name  = each.value
-  type  = "SecureString"
-  value = "CHANGE_ME"
-
-  lifecycle {
-    ignore_changes = [value] # 사람이 채운 실제 값을 보존
-  }
+  name     = each.value
 }
 
-# ECS 태스크 정의에서 "시크릿 키 -> 해당 SSM 파라미터 ARN"을 찾을 때 쓰는 표
+
+# ---- ECS 태스크 정의에서 "시크릿 키 -> SSM ARN" 조회표 ----
+
 locals {
   secret_arns = merge(
     { "db-password" = aws_ssm_parameter.db_password.arn },
-    { for k, v in aws_ssm_parameter.app_secrets : k => v.arn },
+    { for k, v in data.aws_ssm_parameter.app_secrets : k => v.arn },
   )
 }
 
-# ----------------------------------------------------------------------------
-# EC2(Kafka, 모니터링)가 시작 스크립트에서 읽는 파라미터들
-# 경로는 기존 docker-compose / 배포 가이드와 똑같이 맞춥니다.
-# ----------------------------------------------------------------------------
-
-# Kafka Cluster ID: 최초 1회 UUID를 만들어 넣어야 합니다. (배포 가이드 1단계)
-resource "aws_ssm_parameter" "kafka_cluster_id" {
-  name  = "/${var.project}/${var.environment}/kafka/cluster-id"
-  type  = "SecureString"
-  value = "CHANGE_ME" # 배포 가이드의 kafka-storage.sh random-uuid 결과로 교체
-  lifecycle {
-    ignore_changes = [value]
-  }
-}
+# ---- 메인 스택: Kafka / EC2 관련 파라미터 ----
 
 # Kafka EC2 사설 IP: Terraform이 인스턴스를 만들면서 자동으로 채웁니다.
-# (기존 가이드는 수동 등록이었지만, IP를 Terraform이 알고 있으니 자동화합니다)
 resource "aws_ssm_parameter" "kafka_private_ip" {
   name  = "/${var.project}/${var.environment}/kafka/private-ip"
   type  = "String"
   value = aws_instance.kafka.private_ip
-}
-
-# Grafana 관리자 비밀번호
-resource "aws_ssm_parameter" "grafana_admin_password" {
-  name  = "/${var.project}/${var.environment}/monitoring/grafana-admin-password"
-  type  = "SecureString"
-  value = "CHANGE_ME"
-  lifecycle {
-    ignore_changes = [value]
-  }
-}
-
-# Grafana 알림용 Slack Webhook
-resource "aws_ssm_parameter" "monitoring_slack_webhook" {
-  name  = "/${var.project}/${var.environment}/monitoring/slack-webhook-url"
-  type  = "SecureString"
-  value = "CHANGE_ME"
-  lifecycle {
-    ignore_changes = [value]
-  }
-}
-
-# Langfuse NextAuth 서명 시크릿 (openssl rand -base64 32 로 생성)
-resource "aws_ssm_parameter" "langfuse_nextauth_secret" {
-  name  = "/${var.project}/${var.environment}/langfuse/nextauth-secret"
-  type  = "SecureString"
-  value = "CHANGE_ME"
-  lifecycle {
-    ignore_changes = [value]
-  }
-}
-
-# Langfuse 비밀번호 해시 솔트 (openssl rand -base64 32 로 생성)
-resource "aws_ssm_parameter" "langfuse_salt" {
-  name  = "/${var.project}/${var.environment}/langfuse/salt"
-  type  = "SecureString"
-  value = "CHANGE_ME"
-  lifecycle {
-    ignore_changes = [value]
-  }
 }
