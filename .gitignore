@@ -7,4 +7,4 @@ crash.log
 override.tf
 override.tf.json
 tfplan
-scripts/*.json
+ssm-backup.json
