@@ -143,6 +143,21 @@ resource "aws_iam_role_policy" "ec2_grafana_ec2" {
   })
 }
 
+# deploy-monitoring.sh가 RDS 엔드포인트를 조회할 때 필요
+resource "aws_iam_role_policy" "ec2_rds_describe" {
+  name = "${local.name}-ec2-rds-describe"
+  role = aws_iam_role.ec2.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "RdsDescribeInstances"
+      Effect   = "Allow"
+      Action   = ["rds:DescribeDBInstances"]
+      Resource = "*"
+    }]
+  })
+}
+
 # EC2에 역할을 붙이려면 "인스턴스 프로파일"이라는 포장지가 필요합니다.
 resource "aws_iam_instance_profile" "ec2" {
   name = "${local.name}-ec2-profile"
