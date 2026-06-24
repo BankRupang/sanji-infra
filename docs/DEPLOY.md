@@ -111,9 +111,9 @@ bash scripts/ssm-restore.sh
 | `/sanji/prod/slack/webhook-url` | Slack Webhook URL |
 | `/sanji/prod/slack/bot-token` | Slack 봇 토큰 |
 | `/sanji/prod/ai/gemini-api-key` | Gemini API 키 |
-| `/sanji/prod/kafka/cluster-id` | Kafka Cluster ID (`kafka-storage.sh random-uuid`로 생성) |
+| `/sanji/prod/kafka/cluster-id` | Kafka Cluster ID (임의의 UUID 값) |
 | `/sanji/prod/monitoring/grafana-admin-password` | Grafana 관리자 비밀번호 |
-| `/sanji/prod/monitoring/slack-webhook-url` | Grafana 알림용 Slack Webhook (선택) |
+| `/sanji/prod/monitoring/slack-webhook-url` | Grafana 알림용 Slack Webhook |
 | `/sanji/prod/langfuse/nextauth-secret` | Langfuse NextAuth 시크릿 (`openssl rand -base64 32`으로 생성) |
 | `/sanji/prod/langfuse/salt` | Langfuse Salt (`openssl rand -base64 32`으로 생성) |
 
