@@ -9,7 +9,7 @@
 #   - AWS CLI 설치 및 인증 완료
 #   - 모니터링 EC2가 실행 중이고 SSM Agent가 Online 상태
 #   - RDS가 생성 완료된 상태
-#   - 모니터링 EC2에 sanji-jk 저장소가 배포되어 있어야 함 (db/init/*.sql 존재)
+#   - 모니터링 EC2 /home/ec2-user/deploy/db/init/*.sql 파일이 있어야 함
 
 set -euo pipefail
 
@@ -57,7 +57,7 @@ echo "[2/3] 모니터링 EC2에서 스키마 초기화 실행 중..."
 
 CMD="dnf install -y postgresql15 -q && \
   export PGPASSWORD='${DB_PASSWORD}' && \
-  for f in /home/ec2-user/san-ji-jik-kyeng/db/init/*.sql; do \
+  for f in /home/ec2-user/deploy/db/init/*.sql; do \
     printf 'Running %s\n' \$f; \
     psql -h ${RDS_HOST} -p 5432 -U sanji -d sanji -f \$f; \
   done && \

@@ -28,7 +28,6 @@ terraform apply   # 실행 계획 파일을 생성한 경우 terraform apply tfp
 terraform destroy
 terraform apply
 # GitHub Actions에서 Deploy EC2 수동 실행 (Kafka, 모니터링 EC2 배포)
-bash scripts/jmx-setup.sh      # Kafka EC2에 JMX Exporter JAR 다운로드
 bash scripts/db-init.sh        # RDS 스키마 초기화 (psql 스크립트 실행)
 bash scripts/keycloak-setup.sh # Keycloak realm import + client-secret 발급 + SSM 저장
 # GitHub Actions에서 Deploy ECS 수동 실행 (workflow_dispatch)
@@ -50,7 +49,6 @@ root
 ├── scripts/
 │   ├── ssm-backup.sh          # destroy 전 SSM 파라미터 값 백업
 │   ├── ssm-restore.sh         # apply 후 SSM 파라미터 값 복구
-│   ├── jmx-setup.sh           # Kafka EC2에 JMX Exporter JAR 다운로드
 │   ├── db-init.sh             # RDS 스키마 초기화 (Kafka EC2 경유 psql 실행)
 │   └── keycloak-setup.sh      # Keycloak realm import + client-secret 발급
 ├── docs/

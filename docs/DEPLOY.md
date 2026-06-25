@@ -152,17 +152,7 @@ bash scripts/db-init.sh
 
 전제 조건: 모니터링 EC2가 실행 중이고, `Deploy EC2` 워크플로우가 최소 1회 실행된 상태.
 
-### 6-2. Kafka JMX Exporter 설치
-
-```bash
-bash scripts/jmx-setup.sh
-```
-
-Kafka EC2에 JMX Prometheus Exporter JAR 파일을 내려받고 Kafka 컨테이너를 재시작합니다. 이 파일이 없으면 Grafana에서 Kafka 메트릭이 보이지 않습니다.
-
-전제 조건: Kafka EC2가 실행 중이고, `Deploy EC2` 워크플로우가 최소 1회 실행된 상태.
-
-### 6-3. Keycloak 설정
+### 6-2. Keycloak 설정
 
 ```bash
 bash scripts/keycloak-setup.sh
@@ -259,7 +249,6 @@ bash scripts/ssm-restore.sh
 5. [ ] SSM 시크릿 실제 값 채우기 (4-1, 4-2)
 6. [ ] Kafka / 모니터링 EC2 배포 (5단계, GitHub Actions 자동 실행)
 7. [ ] `bash scripts/db-init.sh` (RDS 스키마 + pgvector)
-8. [ ] `bash scripts/jmx-setup.sh` (Kafka JMX Exporter)
-9. [ ] `bash scripts/keycloak-setup.sh` (Keycloak realm + client-secret)
-10. [ ] GitHub Actions `Deploy ECS` 수동 실행 (keycloak client-secret 반영)
-11. [ ] `terraform output` 으로 접속 주소 확인
+8. [ ] `bash scripts/keycloak-setup.sh` (Keycloak realm + client-secret)
+9. [ ] GitHub Actions `Deploy ECS` 수동 실행 (keycloak client-secret 반영)
+10. [ ] `terraform output` 으로 접속 주소 확인

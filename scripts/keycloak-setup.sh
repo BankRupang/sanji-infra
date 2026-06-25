@@ -12,7 +12,7 @@
 #
 # 동작 방식:
 #   SSM 포트 포워딩 없이, 모니터링 EC2에서 직접 Keycloak API를 호출합니다.
-#   realm-export.json 위치: /home/ec2-user/san-ji-jik-kyeng/infra/keycloak/realm-export.json
+#   realm-export.json 위치: /home/ec2-user/deploy/infra/keycloak/realm-export.json
 
 set -euo pipefail
 
@@ -75,7 +75,7 @@ set -euo pipefail
 
 KEYCLOAK_BASE="http://${KEYCLOAK_IP}:${KEYCLOAK_PORT}"
 REGION="${REGION}"
-REALM_FILE="/home/ec2-user/san-ji-jik-kyeng/infra/keycloak/realm-export.json"
+REALM_FILE="/home/ec2-user/deploy/infra/keycloak/realm-export.json"
 
 echo "  [1/5] admin 패스워드 조회..."
 ADMIN_PASS=\$(aws ssm get-parameter \
