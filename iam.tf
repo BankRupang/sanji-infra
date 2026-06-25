@@ -105,6 +105,16 @@ data "aws_iam_policy_document" "ec2_ssm_read" {
     actions   = ["kms:Decrypt"]
     resources = [data.aws_kms_alias.ssm.target_key_arn]
   }
+  statement {
+    sid       = "S3DeployReadObj"
+    actions   = ["s3:GetObject"]
+    resources = ["arn:aws:s3:::sanji-terraform-state/deploy/*"]
+  }
+  statement {
+    sid       = "S3DeployList"
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::sanji-terraform-state"]
+  }
 }
 
 resource "aws_iam_role_policy" "ec2_ssm_read" {
@@ -272,6 +282,16 @@ data "aws_iam_policy_document" "github_actions" {
     sid       = "PassEcsRoles"
     actions   = ["iam:PassRole"]
     resources = [aws_iam_role.ecs_task_execution.arn, aws_iam_role.ecs_task.arn]
+  }
+  statement {
+    sid       = "S3DeployWriteObj"
+    actions   = ["s3:PutObject", "s3:DeleteObject"]
+    resources = ["arn:aws:s3:::sanji-terraform-state/deploy/*"]
+  }
+  statement {
+    sid       = "S3DeployList"
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::sanji-terraform-state"]
   }
 }
 
