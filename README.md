@@ -49,7 +49,7 @@ root
 ├── scripts/
 │   ├── ssm-backup.sh          # destroy 전 SSM 파라미터 값 백업
 │   ├── ssm-restore.sh         # apply 후 SSM 파라미터 값 복구
-│   ├── db-init.sh             # RDS 스키마 초기화 (Kafka EC2 경유 psql 실행)
+│   ├── db-init.sh             # RDS 스키마 초기화 (모니터링 EC2 경유 psql 실행)
 │   └── keycloak-setup.sh      # Keycloak realm import + client-secret 발급
 ├── docs/
 │   └── DEPLOY.md              # 단계별 배포 가이드 문서
