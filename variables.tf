@@ -172,7 +172,7 @@ variable "service_namespace" {
 variable "keycloak_realm" {
   description = "Keycloak 렐름 이름"
   type        = string
-  default     = "sanji"
+  default     = "sanjijk"
 }
 
 # --- Bid 오토스케일링 ---
