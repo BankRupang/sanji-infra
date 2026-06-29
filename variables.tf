@@ -158,7 +158,7 @@ variable "ec2_key_name" {
 # --- ECS / 컨테이너 ---
 
 variable "container_image_tag" {
-  description = "ECS가 ECR에서 받아올 이미지 태그. 문서의 :latest 가변 태그 전략을 따릅니다."
+  description = "Terraform이 태스크 정의를 처음 만들 때 쓰는 이미지 태그. 배포 후에는 CI/CD가 SHA 태그 리비전으로 교체하므로 이 값이 직접 운영에 쓰이지는 않습니다."
   type        = string
   default     = "latest"
 }

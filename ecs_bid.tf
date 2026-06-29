@@ -86,8 +86,9 @@ resource "aws_ecs_service" "bid" {
   deployment_maximum_percent         = 200
 
   lifecycle {
-    # 오토스케일링이 desired_count를 조정하므로 Terraform은 건드리지 않음
-    ignore_changes = [desired_count]
+    # desired_count: 오토스케일링이 조정하므로 Terraform은 건드리지 않음
+    # task_definition: CI/CD가 SHA 태그 리비전을 등록·교체하므로 Terraform은 건드리지 않음
+    ignore_changes = [desired_count, task_definition]
   }
 }
 

@@ -129,8 +129,9 @@ resource "aws_ecs_service" "app" {
   deployment_maximum_percent         = 200
 
   lifecycle {
-    # desired_count를 사람이 바꾸거나 오토스케일이 조정해도 Terraform이 되돌리지 않게
-    ignore_changes = [desired_count]
+    # desired_count: 오토스케일이 조정해도 Terraform이 되돌리지 않게
+    # task_definition: CI/CD가 SHA 태그 리비전을 등록·교체하므로 Terraform은 건드리지 않음
+    ignore_changes = [desired_count, task_definition]
   }
 
   depends_on = [aws_lb_listener.http]
