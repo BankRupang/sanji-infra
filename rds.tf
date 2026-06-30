@@ -41,3 +41,37 @@ resource "aws_db_instance" "main" {
 
   tags = { Name = "${local.name}-postgres" }
 }
+
+# ============================================================================
+# DB 스키마 초기화: Keycloak / Langfuse용 스키마 자동 생성
+# ============================================================================
+# Spring 서비스 스키마는 각 서비스의 Flyway(create-schemas: true)가 처리합니다.
+# Flyway 관리 밖인 Keycloak, Langfuse 스키마만 여기서 생성합니다.
+#
+# RDS는 private subnet에 있어 직접 접근이 불가하므로,
+# 모니터링 EC2를 경유하는 SSM Run Command를 사용합니다.
+resource "null_resource" "db_schema_init" {
+  depends_on = [
+    aws_db_instance.main,
+    aws_instance.monitoring,
+    aws_ssm_parameter.db_password,
+  ]
+
+  # RDS 인스턴스가 처음 만들어질 때만 실행 (재생성 시에도 재실행)
+  triggers = {
+    rds_id = aws_db_instance.main.id
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
+    environment = {
+      REGION      = var.aws_region
+      INSTANCE_ID = aws_instance.monitoring.id
+      RDS_HOST    = aws_db_instance.main.address
+      DB_USER     = var.db_username
+      DB_NAME     = var.db_name
+      SSM_PW_PATH = "/${var.project}/${var.environment}/db/password"
+    }
+    command = "bash ${path.module}/scripts/db-schema-init.sh"
+  }
+}

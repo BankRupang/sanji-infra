@@ -27,8 +27,10 @@ terraform apply   # 실행 계획 파일을 생성한 경우 terraform apply tfp
 # 3) 인프라 제거 후 재배포 시 전체 복구 절차
 terraform destroy
 terraform apply
+# → keycloak/langfuse 스키마는 terraform apply 시 null_resource가 자동 생성
 # GitHub Actions에서 Deploy EC2 수동 실행 (Kafka, 모니터링 EC2 배포)
-bash scripts/db-init.sh        # RDS 스키마 초기화 (psql 스크립트 실행)
+# → Spring 서비스 스키마는 각 서비스 기동 시 Flyway가 자동 생성
+# → pgvector 확장은 ai-service 기동 시 Spring AI가 자동 생성
 bash scripts/keycloak-setup.sh # Keycloak realm import + client-secret 발급 + SSM 저장
 # GitHub Actions에서 Deploy ECS 수동 실행 (workflow_dispatch)
 
@@ -49,7 +51,7 @@ root
 ├── scripts/
 │   ├── ssm-backup.sh          # destroy 전 SSM 파라미터 값 백업
 │   ├── ssm-restore.sh         # apply 후 SSM 파라미터 값 복구
-│   ├── db-init.sh             # RDS 스키마 초기화 (모니터링 EC2 경유 psql 실행)
+│   ├── db-init.sh             # RDS 스키마 수동 복구용
 │   └── keycloak-setup.sh      # Keycloak realm import + client-secret 발급
 ├── docs/
 │   └── DEPLOY.md              # 단계별 배포 가이드 문서

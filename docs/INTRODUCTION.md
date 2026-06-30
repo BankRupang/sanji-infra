@@ -199,7 +199,27 @@ resource "aws_security_group_rule" "ecs_in_from_alb" {  # 규칙은 따로
 
 ---
 
-## 9. lifecycle / ignore_changes (Terraform이 일부러 안 건드리는 것)
+## 9. null_resource로 "인프라 없이 명령만 실행하기"
+
+`null_resource`는 실제 AWS 자원을 만들지 않는 빈 껍데기 리소스입니다. `local-exec` 프로비저너를 붙여 셸 명령만 실행하고 싶을 때 씁니다.
+
+`rds.tf`의 `null_resource.db_schema_init`이 이 패턴의 예시입니다. RDS가 Private Subnet에 있어 Terraform이 직접 접속할 수 없으므로, 모니터링 EC2를 경유하는 SSM Run Command를 `local-exec`으로 실행해 keycloak/langfuse 스키마를 만듭니다.
+
+```hcl
+resource "null_resource" "db_schema_init" {
+  depends_on = [aws_db_instance.main, aws_instance.monitoring]
+  triggers = { rds_id = aws_db_instance.main.id }  # RDS가 새로 만들어질 때만 재실행
+  provisioner "local-exec" {
+    command = "bash ${path.module}/scripts/db-schema-init.sh"
+  }
+}
+```
+
+`triggers`에 적은 값이 바뀔 때만 재실행됩니다. 매 `terraform apply`마다 실행되지 않도록 RDS ID를 트리거로 걸었습니다.
+
+---
+
+## 10. lifecycle / ignore_changes (Terraform이 일부러 안 건드리는 것)
 
 `lifecycle { ignore_changes = [...] }`는 "이 속성은 실제 값이 코드와 달라도 Terraform이 되돌리지 마라"는 뜻입니다.
 
@@ -213,7 +233,7 @@ resource "aws_security_group_rule" "ecs_in_from_alb" {  # 규칙은 따로
 
 ---
 
-## 10. t3 크레딧 경보
+## 11. t3 크레딧 경보
 
 t3 계열(버스터블) 자원에만 "CPU 크레딧 20% 미만" 경보를 걸고, 고정형(m5 등)으로 바꾸면 자동으로 빠집니다.
 
@@ -236,7 +256,7 @@ credit_alarms = {
 
 ---
 
-## 11. bid와 keycloak이 별도 파일인 이유
+## 12. bid와 keycloak이 별도 파일인 이유
 
 - **bid (`ecs_bid.tf`)**: `aws_appautoscaling_target`/`aws_appautoscaling_policy`로 태스크 수를 2~6개로 자동 조절합니다. 일반 서비스 템플릿엔 오토스케일링이 없어서 표로 못 찍어냅니다. `desired_count`도 `var.bid_min_capacity`로 시작합니다.
 - **keycloak (`ecs_keycloak.tf`)**: 공개 이미지(`quay.io/keycloak/keycloak`)를 쓰고, `command`로 실행 모드를 직접 지정하며, 환경변수 구성도 Spring 서비스와 완전히 다릅니다. 표에 안 넣고 코드를 따로 적었습니다.
@@ -245,12 +265,13 @@ credit_alarms = {
 
 ---
 
-## 12. 파일별 코드 빠른 색인
+## 13. 파일별 코드 빠른 색인
 
 | 보고 싶은 코드 | 파일 |
 |---|---|
-| 버전 고정, state 저장 위치(S3 backend) | `versions.tf` |
+| 버전 고정, state 저장 위치(S3 backend), null 프로바이더 | `versions.tf` |
 | 리전, 공통 태그, AMI 조회 | `main.tf` |
+| RDS, null_resource 스키마 초기화 | `rds.tf` |
 | 입력값(손잡이) 정의 | `variables.tf` |
 | **services 정의표, 환경변수 조합, keycloak_url** | `locals.tf` |
 | VPC/서브넷/라우팅 | `network.tf` |
