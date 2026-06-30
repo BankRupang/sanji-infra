@@ -1,9 +1,6 @@
 # ============================================================================
 # 입력 변수(variables) 모음
 # ============================================================================
-# 변수는 "코드를 고치지 않고 값만 바꿔서" 인프라를 조정하는 손잡이입니다.
-# 실제 값은 terraform.tfvars 파일이나 명령줄(-var)로 넣습니다.
-# 문서의 "인스턴스 타입과 대수는 variable로 조정한다" 방침을 그대로 따릅니다.
 
 # --- 공통 ---
 
@@ -14,9 +11,9 @@ variable "project" {
 }
 
 variable "environment" {
-  description = "배포 환경 이름 (prod, staging 등)"
+  description = "배포 환경 이름 (prod, dev 등)"
   type        = string
-  default     = "prod"
+  default     = "dev"
 }
 
 variable "aws_region" {
@@ -28,7 +25,7 @@ variable "aws_region" {
 variable "spring_profile" {
   description = "Spring 부팅 시 활성화할 프로파일"
   type        = string
-  default     = "prod"
+  default     = "dev"
 }
 
 # --- 네트워크 ---
@@ -36,22 +33,21 @@ variable "spring_profile" {
 variable "vpc_cidr" {
   description = "VPC 전체 IP 대역"
   type        = string
-  default     = "10.0.0.0/16"
+  default     = "10.1.0.0/16"
 }
 
 variable "availability_zones" {
   description = <<-EOT
     AZ별 퍼블릭/프라이빗 서브넷 IP 대역입니다.
-    문서는 단일 AZ 운영이지만, ALB와 RDS는 규칙상 최소 2개 AZ가 필요해 2개를 정의합니다.
-    실제 ECS 태스크와 EC2는 primary_az 한 곳에만 띄웁니다.
+    dev는 prod와 IP 대역이 겹치지 않도록 10.1.x.x를 씁니다.
   EOT
   type = map(object({
     public_cidr  = string
     private_cidr = string
   }))
   default = {
-    "ap-northeast-2a" = { public_cidr = "10.0.1.0/24", private_cidr = "10.0.11.0/24" }
-    "ap-northeast-2c" = { public_cidr = "10.0.2.0/24", private_cidr = "10.0.12.0/24" }
+    "ap-northeast-2a" = { public_cidr = "10.1.1.0/24", private_cidr = "10.1.11.0/24" }
+    "ap-northeast-2c" = { public_cidr = "10.1.2.0/24", private_cidr = "10.1.12.0/24" }
   }
 }
 
@@ -112,7 +108,7 @@ variable "db_engine_version" {
 # --- 캐시(ElastiCache Redis) ---
 
 variable "redis_node_type" {
-  description = "Redis 노드 사양. 문서는 t3.micro 시작, 부하 시 t3.medium 상향 검토."
+  description = "Redis 노드 사양"
   type        = string
   default     = "cache.t3.micro"
 }
@@ -128,31 +124,31 @@ variable "redis_engine_version" {
 variable "kafka_count" {
   description = "Kafka EC2 브로커 대수. dev=1, prod=3"
   type        = number
-  default     = 3
+  default     = 1
 }
 
 variable "kafka_instance_type" {
   description = "Kafka EC2 사양"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.micro"
 }
 
 variable "kafka_volume_size" {
   description = "Kafka EC2 디스크 크기(GB)"
   type        = number
-  default     = 30
+  default     = 20
 }
 
 variable "monitoring_instance_type" {
   description = "모니터링(PLG) EC2 사양"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.micro"
 }
 
 variable "monitoring_volume_size" {
   description = "모니터링 EC2 디스크 크기(GB)"
   type        = number
-  default     = 50
+  default     = 30
 }
 
 variable "ec2_key_name" {
@@ -164,13 +160,13 @@ variable "ec2_key_name" {
 # --- ECS / 컨테이너 ---
 
 variable "container_image_tag" {
-  description = "Terraform이 태스크 정의를 처음 만들 때 쓰는 이미지 태그. 배포 후에는 CI/CD가 SHA 태그 리비전으로 교체하므로 이 값이 직접 운영에 쓰이지는 않습니다."
+  description = "Terraform이 태스크 정의를 처음 만들 때 쓰는 이미지 태그."
   type        = string
   default     = "latest"
 }
 
 variable "service_namespace" {
-  description = "서비스 디스커버리(Cloud Map) 내부 도메인. 예: config-server.sanji.local"
+  description = "서비스 디스커버리(Cloud Map) 내부 도메인"
   type        = string
   default     = "sanji.local"
 }
@@ -186,13 +182,13 @@ variable "keycloak_realm" {
 variable "bid_min_capacity" {
   description = "Bid 최소 태스크 수"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "bid_max_capacity" {
   description = "Bid 최대 태스크 수"
   type        = number
-  default     = 6
+  default     = 2
 }
 
 variable "bid_cpu_target" {
@@ -206,7 +202,7 @@ variable "bid_cpu_target" {
 variable "acm_certificate_arn" {
   description = <<-EOT
     HTTPS(443)를 켜려면 ACM 인증서 ARN을 넣으세요.
-    비워두면 HTTP(80)만 동작합니다. (문서: ALB 기본 DNS로 시작)
+    비워두면 HTTP(80)만 동작합니다.
   EOT
   type        = string
   default     = ""
@@ -217,7 +213,7 @@ variable "acm_certificate_arn" {
 variable "enable_github_oidc" {
   description = "GitHub Actions가 키 없이 AWS에 배포하도록 OIDC 역할을 만들지 여부"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "github_repo" {

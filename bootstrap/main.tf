@@ -78,22 +78,28 @@ resource "aws_s3_bucket_public_access_block" "tf_state" {
 # apply 후 ssm-restore.sh 를 최초 1회 실행해서 실제 값을 채웁니다.
 
 locals {
-  bootstrap_secrets = {
-    "keycloak/client-secret"         = "/sanji/prod/keycloak/client-secret"
-    "keycloak/admin-password"        = "/sanji/prod/keycloak/admin-password"
-    "user/manager-key"               = "/sanji/prod/user/manager-key"
-    "user/master-key"                = "/sanji/prod/user/master-key"
-    "toss/client-key"                = "/sanji/prod/toss/client-key"
-    "toss/secret-key"                = "/sanji/prod/toss/secret-key"
-    "slack/webhook-url"              = "/sanji/prod/slack/webhook-url"
-    "slack/bot-token"                = "/sanji/prod/slack/bot-token"
-    "ai/gemini-api-key"              = "/sanji/prod/ai/gemini-api-key"
-    "kafka/cluster-id"               = "/sanji/prod/kafka/cluster-id"
-    "monitoring/grafana-admin-password" = "/sanji/prod/monitoring/grafana-admin-password"
-    "monitoring/slack-webhook-url"   = "/sanji/prod/monitoring/slack-webhook-url"
-    "langfuse/nextauth-secret"       = "/sanji/prod/langfuse/nextauth-secret"
-    "langfuse/salt"                  = "/sanji/prod/langfuse/salt"
-  }
+  secret_keys = [
+    "keycloak/client-secret",
+    "keycloak/admin-password",
+    "user/manager-key",
+    "user/master-key",
+    "toss/client-key",
+    "toss/secret-key",
+    "slack/webhook-url",
+    "slack/bot-token",
+    "ai/gemini-api-key",
+    "kafka/cluster-id",
+    "monitoring/grafana-admin-password",
+    "monitoring/slack-webhook-url",
+    "langfuse/nextauth-secret",
+    "langfuse/salt",
+  ]
+
+  # 환경별로 같은 키를 "/sanji/{env}/{key}" 경로로 만듭니다.
+  bootstrap_secrets = merge(
+    { for k in local.secret_keys : "prod/${k}" => "/sanji/prod/${k}" },
+    { for k in local.secret_keys : "dev/${k}"  => "/sanji/dev/${k}" },
+  )
 }
 
 resource "aws_ssm_parameter" "secrets" {

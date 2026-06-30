@@ -1,5 +1,5 @@
 output "kafka_instances" {
-  description = "Kafka EC2 인스턴스 목록 (3대)"
+  description = "Kafka EC2 인스턴스 목록"
   value       = aws_instance.kafka
 }
 
