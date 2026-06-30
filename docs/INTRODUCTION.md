@@ -36,22 +36,35 @@
 ```mermaid
 graph TD
     A([terraform.tfvars <br> 사람이 입력]) --> B[variables.tf <br> 입력값 정의]
-    B --> C[locals.tf <br> 입력값 + 자원 결과 조합/계산]
-    C --> D[각 *.tf 리소스 <br> 실제 자원 생성]
+    B --> C[main.tf <br> 모듈 6개 호출]
+    C --> D[modules/* <br> 실제 자원 생성]
     D --> E([outputs.tf <br> 결과 주소를 화면에 출력])
 ```
 
-`locals`는 **자원이 만들어진 뒤의 결과값**도 참조합니다.
-예를 들어 RDS 주소(`aws_db_instance.main.address`)는 RDS를 만들기 전엔 모르는 값이라, 그걸 쓰는 환경변수는 `locals`에서 "RDS가 생긴 뒤" 조합됩니다.
+코드는 기능 단위로 6개 모듈로 나뉩니다.
+
+| 모듈 | 위치 | 담당 |
+|---|---|---|
+| network | `modules/network/` | VPC, 서브넷, 보안 그룹 |
+| edge | `modules/edge/` | ALB, 리스너 |
+| compute-ec2 | `modules/compute-ec2/` | Kafka EC2 3대, 모니터링 EC2 |
+| data | `modules/data/` | RDS, Redis, DB 스키마 초기화 |
+| ecs | `modules/ecs/` | ECR, ECS 클러스터/서비스 전체 |
+| observability | `modules/observability/` | CloudWatch 경보, SNS |
+
+루트의 `iam.tf`와 `ssm.tf`는 여러 모듈에 걸친 IAM 역할과 SSM 파라미터를 담당해 루트에 남아 있습니다.
+
+각 모듈 안의 `locals`는 **자원이 만들어진 뒤의 결과값**도 참조합니다.
+예를 들어 RDS 주소(`aws_db_instance.main.address`)는 RDS를 만들기 전엔 모르는 값이라, 그걸 쓰는 환경변수는 `modules/ecs/`의 `locals`에서 "RDS가 생긴 뒤" 조합됩니다.
 그래서 locals가 단순 상수표가 아니라 조립 라인 역할을 합니다.
 
 ---
 
 ## 3. 핵심 패턴: 표 한 줄이 자원 여러 개가 되는 법
 
-### 3-1. 정의표는 locals.tf에 있다
+### 3-1. 정의표는 modules/ecs/main.tf에 있다
 
-`locals.tf`의 `services`는 일반 서비스 9개를 적은 표(map)입니다. 한 줄이 서비스 하나입니다.
+`modules/ecs/main.tf`의 `locals` 블록 안에 있는 `services`는 일반 서비스 9개를 적은 표(map)입니다. 한 줄이 서비스 하나입니다.
 
 ```hcl
 services = {
@@ -61,9 +74,9 @@ services = {
 }
 ```
 
-### 3-2. ecs_services.tf가 그 표를 for_each로 돌린다
+### 3-2. modules/ecs/main.tf가 그 표를 for_each로 돌린다
 
-`ecs_services.tf`의 리소스들은 모두 `for_each = local.services`로 같은 표를 돕니다.
+`modules/ecs/main.tf`의 리소스들은 모두 `for_each = local.services`로 같은 표를 돕니다.
 **표에 줄을 하나 추가하면** 아래 4개가 그 서비스용으로 자동 생성됩니다.
 
 | 리소스 | 무엇이 만들어지나 |
@@ -78,7 +91,7 @@ services = {
 
 ### 3-3. ECR 저장소도 같은 표에서 나온다
 
-`ecr.tf`를 보면 저장소 목록을 직접 안 적고 `services`에서 가져옵니다.
+`modules/ecs/main.tf`를 보면 저장소 목록을 직접 안 적고 `services`에서 가져옵니다.
 
 ```hcl
 ecr_repos = toset(concat(keys(local.services), ["bid-service"]))
@@ -93,7 +106,7 @@ ecr_repos = toset(concat(keys(local.services), ["bid-service"]))
 
 ## 4. 환경변수를 조립하는 merge() 로직
 
-서비스마다 들어갈 환경변수가 다르고, `ecs_services.tf`의 `service_env`에서 `merge()`로 겹쳐 쌓습니다. `merge()`는 여러 맵을 합치되 **뒤에 온 것이 앞을 덮어씁니다.**
+서비스마다 들어갈 환경변수가 다르고, `modules/ecs/main.tf`의 `service_env`에서 `merge()`로 겹쳐 쌓습니다. `merge()`는 여러 맵을 합치되 **뒤에 온 것이 앞을 덮어씁니다.**
 
 ```hcl
 service_env = {
@@ -110,7 +123,7 @@ service_env = {
 - `s.redis ? {...} : {}`는 "redis가 true면 Redis 주소를 넣고, 아니면 빈 맵"입니다. 표의 `redis = true` 한 칸이 환경변수 포함 여부를 결정합니다.
 - `s.extra_env`가 맨 뒤라, 서비스 고유 설정이 공통값을 덮어쓸 수 있습니다.
 
-> bid는 이 표에 없고 `ecs_bid.tf`에서 `bid_env`를 따로 같은 방식(`merge`)으로 만듭니다. bid는 DB/Redis/Kafka를 전부 쓰는 게 확정이라 조건 없이 다 넣습니다.
+> bid는 이 표에 없고 `modules/ecs/main.tf` 안의 `bid_env`를 따로 같은 방식(`merge`)으로 만듭니다. bid는 DB/Redis/Kafka를 전부 쓰는 게 확정이라 조건 없이 다 넣습니다.
 
 ---
 
@@ -149,9 +162,9 @@ secrets = [for env_name, key in each.value.secrets : { name = env_name, valueFro
 
 | 자원 | 조건 | 위치 |
 |---|---|---|
-| HTTPS 리스너, ALB 443 인바운드 | `acm_certificate_arn`이 비어있지 않을 때 | `alb.tf`, `security_groups.tf` |
+| HTTPS 리스너, ALB 443 인바운드 | `acm_certificate_arn`이 비어있지 않을 때 | `modules/edge/main.tf`, `modules/network/main.tf` |
 | GitHub OIDC 프로바이더/역할 | `enable_github_oidc = true`일 때 | `iam.tf` |
-| SNS 주제/이메일 구독 | `alert_email`이 비어있지 않을 때 | `cloudwatch.tf` |
+| SNS 주제/이메일 구독 | `alert_email`이 비어있지 않을 때 | `modules/observability/main.tf` |
 
 `count`로 만든 자원은 `[0]`을 붙여 가리킵니다. 예: `aws_iam_role.github_actions[0].arn`.
 `outputs.tf`에서도 `var.enable_github_oidc ? aws_iam_role.github_actions[0].arn : "(disabled)"`처럼 조건을 한 번 더 확인합니다. (없는 걸 가리키면 에러나기 때문)
@@ -162,13 +175,13 @@ secrets = [for env_name, key in each.value.secrets : { name = env_name, valueFro
 
 `dynamic`은 자원 **안의 블록**을 조건부로 넣거나 뺄 때 씁니다. `for_each`가 자원 전체를 반복한다면, `dynamic`은 자원 속 한 블록을 반복/조건 처리합니다.
 
-gateway만 ALB에 붙어야 하므로 `ecs_services.tf`에서 이렇게 씁니다.
+gateway만 ALB에 붙어야 하므로 `modules/ecs/main.tf`에서 이렇게 씁니다.
 
 ```hcl
 dynamic "load_balancer" {
   for_each = each.value.alb ? [1] : []   # alb=true면 1번 돌고, 아니면 0번(블록 없음)
   content {
-    target_group_arn = aws_lb_target_group.gateway.arn
+    target_group_arn = var.target_group_gateway_arn
     container_name   = each.key
     container_port   = each.value.port
   }
@@ -176,13 +189,13 @@ dynamic "load_balancer" {
 ```
 
 `for_each`에 `[1]`(원소 1개)을 주면 블록이 생기고, `[]`(빈 목록)을 주면 블록이 안 생깁니다.
-`alb.tf`의 HTTP 리스너도 같은 방식으로, 인증서가 있으면 `redirect` 블록을, 없으면 그냥 forward를 씁니다.
+`modules/edge/main.tf`의 HTTP 리스너도 같은 방식으로, 인증서가 있으면 `redirect` 블록을, 없으면 그냥 forward를 씁니다.
 
 ---
 
 ## 8. 보안 그룹과 규칙을 일부러 떼어놓은 이유
 
-`security_groups.tf`를 보면 보안 그룹 안에 인바운드 규칙을 직접 안 적고, 빈 그룹을 먼저 만든 뒤 `aws_security_group_rule`로 규칙을 따로 붙입니다.
+`modules/network/main.tf`를 보면 보안 그룹 안에 인바운드 규칙을 직접 안 적고, 빈 그룹을 먼저 만든 뒤 `aws_security_group_rule`로 규칙을 따로 붙입니다.
 
 ```hcl
 resource "aws_security_group" "ecs" { ... }            # 빈 그룹
@@ -203,14 +216,14 @@ resource "aws_security_group_rule" "ecs_in_from_alb" {  # 규칙은 따로
 
 `null_resource`는 실제 AWS 자원을 만들지 않는 빈 껍데기 리소스입니다. `local-exec` 프로비저너를 붙여 셸 명령만 실행하고 싶을 때 씁니다.
 
-`rds.tf`의 `null_resource.db_schema_init`이 이 패턴의 예시입니다. RDS가 Private Subnet에 있어 Terraform이 직접 접속할 수 없으므로, 모니터링 EC2를 경유하는 SSM Run Command를 `local-exec`으로 실행해 keycloak/langfuse 스키마를 만듭니다.
+`modules/data/main.tf`의 `null_resource.db_schema_init`이 이 패턴의 예시입니다. RDS가 Private Subnet에 있어 Terraform이 직접 접속할 수 없으므로, 모니터링 EC2를 경유하는 SSM Run Command를 `local-exec`으로 실행해 keycloak/langfuse 스키마를 만듭니다.
 
 ```hcl
 resource "null_resource" "db_schema_init" {
-  depends_on = [aws_db_instance.main, aws_instance.monitoring]
+  depends_on = [aws_db_instance.main]
   triggers = { rds_id = aws_db_instance.main.id }  # RDS가 새로 만들어질 때만 재실행
   provisioner "local-exec" {
-    command = "bash ${path.module}/scripts/db-schema-init.sh"
+    command = "bash ${path.root}/scripts/db-schema-init.sh"
   }
 }
 ```
@@ -258,8 +271,10 @@ credit_alarms = {
 
 ## 12. bid와 keycloak이 별도 파일인 이유
 
-- **bid (`ecs_bid.tf`)**: `aws_appautoscaling_target`/`aws_appautoscaling_policy`로 태스크 수를 2~6개로 자동 조절합니다. 일반 서비스 템플릿엔 오토스케일링이 없어서 표로 못 찍어냅니다. `desired_count`도 `var.bid_min_capacity`로 시작합니다.
-- **keycloak (`ecs_keycloak.tf`)**: 공개 이미지(`quay.io/keycloak/keycloak`)를 쓰고, `command`로 실행 모드를 직접 지정하며, 환경변수 구성도 Spring 서비스와 완전히 다릅니다. 표에 안 넣고 코드를 따로 적었습니다.
+- **bid**: `aws_appautoscaling_target`/`aws_appautoscaling_policy`로 태스크 수를 2~6개로 자동 조절합니다. 일반 서비스 템플릿엔 오토스케일링이 없어서 표로 못 찍어냅니다. `desired_count`도 `var.bid_min_capacity`로 시작합니다.
+- **keycloak**: 공개 이미지(`quay.io/keycloak/keycloak`)를 쓰고, `command`로 실행 모드를 직접 지정하며, 환경변수 구성도 Spring 서비스와 완전히 다릅니다. 표에 안 넣고 코드를 따로 적었습니다.
+
+둘 다 `modules/ecs/main.tf` 안에 일반 서비스와 함께 있습니다.
 
 둘 다 로그 그룹/서비스 디스커버리를 만드는 모양은 일반 서비스와 같지만, `for_each` 없이 단일 자원으로 적혀 있다는 점만 다릅니다.
 
@@ -267,22 +282,31 @@ credit_alarms = {
 
 ## 13. 파일별 코드 빠른 색인
 
+### 루트 파일
+
 | 보고 싶은 코드 | 파일 |
 |---|---|
-| 버전 고정, state 저장 위치(S3 backend), null 프로바이더 | `versions.tf` |
-| 리전, 공통 태그, AMI 조회 | `main.tf` |
-| RDS, null_resource 스키마 초기화 | `rds.tf` |
+| 버전 고정, state 저장 위치(S3 backend) | `versions.tf` |
+| 리전, 공통 태그, AMI 조회, 모듈 6개 호출 | `main.tf` |
 | 입력값(손잡이) 정의 | `variables.tf` |
-| **services 정의표, 환경변수 조합, keycloak_url** | `locals.tf` |
-| VPC/서브넷/라우팅 | `network.tf` |
-| 보안 그룹 + 규칙(순환 참조 처리) | `security_groups.tf` |
-| services 표를 도는 ECS 리소스, service_env, secrets 주입 | `ecs_services.tf` |
-| bid 오토스케일링 | `ecs_bid.tf` |
-| keycloak(공개 이미지) | `ecs_keycloak.tf` |
-| ECR 저장소(services에서 목록 가져옴) | `ecr.tf` |
-| count로 조건부 생성되는 OIDC, PassRole 등 | `iam.tf` |
-| secret_arns 조회표 | `ssm.tf` |
-| dynamic 리스너, 대상 그룹 | `alb.tf` |
-| t3 크레딧 계산 경보 | `cloudwatch.tf` |
+| `name` 접두사 | `locals.tf` |
+| IAM 역할 전체(ECS, EC2, GitHub OIDC) | `iam.tf` |
+| secret_arns 조회표, Kafka SSM 파라미터 | `ssm.tf` |
 | 출력 주소 | `outputs.tf` |
+| 기존 인프라 모듈화 시 주소 이전 선언 | `moved.tf` |
 | state용 S3 + 영구 시크릿(prevent_destroy) | `bootstrap/main.tf` |
+
+### 모듈 파일
+
+| 보고 싶은 코드 | 파일 |
+|---|---|
+| VPC/서브넷/라우팅 + 보안 그룹/규칙(순환 참조 처리) | `modules/network/main.tf` |
+| dynamic 리스너, 대상 그룹 | `modules/edge/main.tf` |
+| RDS, null_resource 스키마 초기화, Redis | `modules/data/main.tf` |
+| Kafka EC2 3대, 모니터링 EC2 | `modules/compute-ec2/main.tf` |
+| **services 정의표, 환경변수 조합, keycloak_url** | `modules/ecs/main.tf` |
+| ECR 저장소(services에서 목록 가져옴) | `modules/ecs/main.tf` |
+| services 표를 도는 ECS 리소스, service_env, secrets 주입 | `modules/ecs/main.tf` |
+| bid 오토스케일링 | `modules/ecs/main.tf` |
+| keycloak(공개 이미지) | `modules/ecs/main.tf` |
+| t3 크레딧 계산 경보 | `modules/observability/main.tf` |
