@@ -24,7 +24,7 @@ data "aws_iam_policy_document" "ecs_assume" {
 }
 
 resource "aws_iam_role" "ecs_task_execution" {
-  name               = "${local.name}-ecs-exec-role"
+  name               = "${var.name}-ecs-exec-role"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
 }
 
@@ -39,7 +39,7 @@ data "aws_iam_policy_document" "ecs_secrets" {
   statement {
     sid       = "ReadSanjiParameters"
     actions   = ["ssm:GetParameters", "ssm:GetParameter"]
-    resources = ["arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project}/*"]
+    resources = ["arn:aws:ssm:${var.aws_region}:${var.account_id}:parameter/${var.project}/*"]
   }
   statement {
     sid       = "DecryptWithSsmKey"
@@ -49,7 +49,7 @@ data "aws_iam_policy_document" "ecs_secrets" {
 }
 
 resource "aws_iam_role_policy" "ecs_secrets" {
-  name   = "${local.name}-ecs-secrets"
+  name   = "${var.name}-ecs-secrets"
   role   = aws_iam_role.ecs_task_execution.id
   policy = data.aws_iam_policy_document.ecs_secrets.json
 }
@@ -60,7 +60,7 @@ resource "aws_iam_role_policy" "ecs_secrets" {
 #    현재 앱은 AWS를 직접 호출하지 않아 비워두지만, 자리는 만들어 둡니다.
 # ----------------------------------------------------------------------------
 resource "aws_iam_role" "ecs_task" {
-  name               = "${local.name}-ecs-task-role"
+  name               = "${var.name}-ecs-task-role"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
 }
 
@@ -80,7 +80,7 @@ data "aws_iam_policy_document" "ec2_assume" {
 }
 
 resource "aws_iam_role" "ec2" {
-  name               = "${local.name}-ec2-role"
+  name               = "${var.name}-ec2-role"
   assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
 }
 
@@ -99,7 +99,7 @@ resource "aws_iam_role_policy_attachment" "ec2_cloudwatch_ro" {
 data "aws_iam_policy_document" "ec2_ssm_read" {
   statement {
     actions   = ["ssm:GetParameter", "ssm:GetParameters"]
-    resources = ["arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project}/*"]
+    resources = ["arn:aws:ssm:${var.aws_region}:${var.account_id}:parameter/${var.project}/*"]
   }
   statement {
     actions   = ["kms:Decrypt"]
@@ -114,18 +114,23 @@ data "aws_iam_policy_document" "ec2_ssm_read" {
     sid       = "S3DeployList"
     actions   = ["s3:ListBucket"]
     resources = ["arn:aws:s3:::sanji-terraform-state"]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["deploy/*"]
+    }
   }
 }
 
 resource "aws_iam_role_policy" "ec2_ssm_read" {
-  name   = "${local.name}-ec2-ssm-read"
+  name   = "${var.name}-ec2-ssm-read"
   role   = aws_iam_role.ec2.id
   policy = data.aws_iam_policy_document.ec2_ssm_read.json
 }
 
 # ecs-discovery.sh(cron)가 ECS 태스크 IP를 조회할 때 필요
 resource "aws_iam_role_policy" "ec2_ecs_discovery" {
-  name = "${local.name}-ec2-ecs-discovery"
+  name = "${var.name}-ec2-ecs-discovery"
   role = aws_iam_role.ec2.id
   policy = jsonencode({
     Version = "2012-10-17"
@@ -140,7 +145,7 @@ resource "aws_iam_role_policy" "ec2_ecs_discovery" {
 
 # Grafana CloudWatch datasource가 리전 목록을 조회할 때 필요
 resource "aws_iam_role_policy" "ec2_grafana_ec2" {
-  name = "${local.name}-ec2-grafana-ec2"
+  name = "${var.name}-ec2-grafana-ec2"
   role = aws_iam_role.ec2.id
   policy = jsonencode({
     Version = "2012-10-17"
@@ -155,7 +160,7 @@ resource "aws_iam_role_policy" "ec2_grafana_ec2" {
 
 # deploy-monitoring.sh가 RDS 엔드포인트를 조회할 때 필요
 resource "aws_iam_role_policy" "ec2_rds_describe" {
-  name = "${local.name}-ec2-rds-describe"
+  name = "${var.name}-ec2-rds-describe"
   role = aws_iam_role.ec2.id
   policy = jsonencode({
     Version = "2012-10-17"
@@ -170,7 +175,7 @@ resource "aws_iam_role_policy" "ec2_rds_describe" {
 
 # EC2에 역할을 붙이려면 "인스턴스 프로파일"이라는 포장지가 필요합니다.
 resource "aws_iam_instance_profile" "ec2" {
-  name = "${local.name}-ec2-profile"
+  name = "${var.name}-ec2-profile"
   role = aws_iam_role.ec2.name
 }
 
@@ -218,7 +223,7 @@ data "aws_iam_policy_document" "github_assume" {
 
 resource "aws_iam_role" "github_actions" {
   count              = var.enable_github_oidc ? 1 : 0
-  name               = "${local.name}-github-actions-role"
+  name               = "${var.name}-github-actions-role"
   assume_role_policy = data.aws_iam_policy_document.github_assume[0].json
 }
 
@@ -242,7 +247,7 @@ data "aws_iam_policy_document" "github_actions" {
       "ecr:BatchGetImage",
       "ecr:GetDownloadUrlForLayer",
     ]
-    resources = ["arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${var.project}/*"]
+    resources = ["arn:aws:ecr:${var.aws_region}:${var.account_id}:repository/${var.project}/*"]
   }
   # 서비스/태스크 수준 작업: 이 클러스터 안의 리소스로만 범위를 제한합니다.
   statement {
@@ -254,8 +259,8 @@ data "aws_iam_policy_document" "github_actions" {
       "ecs:DescribeTasks",
     ]
     resources = [
-      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/${local.name}-cluster/*",
-      "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:task/${local.name}-cluster/*",
+      "arn:aws:ecs:${var.aws_region}:${var.account_id}:service/${var.name}-cluster/*",
+      "arn:aws:ecs:${var.aws_region}:${var.account_id}:task/${var.name}-cluster/*",
     ]
   }
   # RegisterTaskDefinition은 AWS 정책상 특정 리소스로 범위 제한이 불가합니다.
@@ -292,12 +297,17 @@ data "aws_iam_policy_document" "github_actions" {
     sid       = "S3DeployList"
     actions   = ["s3:ListBucket"]
     resources = ["arn:aws:s3:::sanji-terraform-state"]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["deploy/*"]
+    }
   }
 }
 
 resource "aws_iam_role_policy" "github_actions" {
   count  = var.enable_github_oidc ? 1 : 0
-  name   = "${local.name}-github-actions"
+  name   = "${var.name}-github-actions"
   role   = aws_iam_role.github_actions[0].id
   policy = data.aws_iam_policy_document.github_actions[0].json
 }

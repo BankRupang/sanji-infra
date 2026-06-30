@@ -35,24 +35,23 @@
 
 ```mermaid
 graph TD
-    A([terraform.tfvars <br> 사람이 입력]) --> B[variables.tf <br> 입력값 정의]
-    B --> C[main.tf <br> 모듈 6개 호출]
-    C --> D[modules/* <br> 실제 자원 생성]
-    D --> E([outputs.tf <br> 결과 주소를 화면에 출력])
+    A([terraform.tfvars <br> 사람이 입력]) --> B[envs/prod/ 또는 envs/dev/ <br> variables.tf · main.tf]
+    B --> C[modules/* <br> 실제 자원 생성]
+    C --> D([outputs.tf <br> 결과 주소를 화면에 출력])
 ```
 
-코드는 기능 단위로 6개 모듈로 나뉩니다.
+환경 폴더(`envs/prod/`, `envs/dev/`)가 진입점이고, 공통 인프라 로직은 6개 모듈로 나뉩니다. 두 환경이 같은 모듈을 공유하고, 변수값만 다르게 줍니다.
 
 | 모듈 | 위치 | 담당 |
 |---|---|---|
 | network | `modules/network/` | VPC, 서브넷, 보안 그룹 |
 | edge | `modules/edge/` | ALB, 리스너 |
-| compute-ec2 | `modules/compute-ec2/` | Kafka EC2 3대, 모니터링 EC2 |
+| compute-ec2 | `modules/compute-ec2/` | Kafka EC2 (`kafka_count`대), 모니터링 EC2 |
 | data | `modules/data/` | RDS, Redis, DB 스키마 초기화 |
 | ecs | `modules/ecs/` | ECR, ECS 클러스터/서비스 전체 |
 | observability | `modules/observability/` | CloudWatch 경보, SNS |
-
-루트의 `iam.tf`와 `ssm.tf`는 여러 모듈에 걸친 IAM 역할과 SSM 파라미터를 담당해 루트에 남아 있습니다.
+| iam | `modules/iam/` | ECS/EC2/GitHub Actions IAM 역할 전체 |
+| ssm | `modules/ssm/` | SSM 파라미터 생성 + bootstrap 시크릿 ARN 조회 |
 
 각 모듈 안의 `locals`는 **자원이 만들어진 뒤의 결과값**도 참조합니다.
 예를 들어 RDS 주소(`aws_db_instance.main.address`)는 RDS를 만들기 전엔 모르는 값이라, 그걸 쓰는 환경변수는 `modules/ecs/`의 `locals`에서 "RDS가 생긴 뒤" 조합됩니다.
@@ -129,7 +128,7 @@ service_env = {
 
 ## 5. 시크릿을 코드에 안 적고 SSM ARN으로 연결하는 법
 
-비밀번호/API 키는 코드에 직접 안 적습니다. `ssm.tf`가 시크릿 키 이름 → SSM 주소(ARN) 조회표를 만들고, 태스크 정의는 그 표를 보고 값을 끌어옵니다.
+비밀번호/API 키는 코드에 직접 안 적습니다. `modules/ssm/main.tf`가 시크릿 키 이름 → SSM 주소(ARN) 조회표를 만들고, 태스크 정의는 그 표를 보고 값을 끌어옵니다.
 
 ### 5-1. 조회표(secret_arns)가 만들어지는 과정
 
@@ -163,11 +162,11 @@ secrets = [for env_name, key in each.value.secrets : { name = env_name, valueFro
 | 자원 | 조건 | 위치 |
 |---|---|---|
 | HTTPS 리스너, ALB 443 인바운드 | `acm_certificate_arn`이 비어있지 않을 때 | `modules/edge/main.tf`, `modules/network/main.tf` |
-| GitHub OIDC 프로바이더/역할 | `enable_github_oidc = true`일 때 | `iam.tf` |
+| GitHub OIDC 프로바이더/역할 | `enable_github_oidc = true`일 때 | `modules/iam/main.tf` |
 | SNS 주제/이메일 구독 | `alert_email`이 비어있지 않을 때 | `modules/observability/main.tf` |
 
 `count`로 만든 자원은 `[0]`을 붙여 가리킵니다. 예: `aws_iam_role.github_actions[0].arn`.
-`outputs.tf`에서도 `var.enable_github_oidc ? aws_iam_role.github_actions[0].arn : "(disabled)"`처럼 조건을 한 번 더 확인합니다. (없는 걸 가리키면 에러나기 때문)
+`outputs.tf`에서도 `module.iam.github_actions_role_arn != null ? module.iam.github_actions_role_arn : "(disabled)"`처럼 조건을 한 번 더 확인합니다. (없는 걸 가리키면 에러나기 때문)
 
 ---
 
@@ -221,14 +220,17 @@ resource "aws_security_group_rule" "ecs_in_from_alb" {  # 규칙은 따로
 ```hcl
 resource "null_resource" "db_schema_init" {
   depends_on = [aws_db_instance.main]
-  triggers = { rds_id = aws_db_instance.main.id }  # RDS가 새로 만들어질 때만 재실행
+  triggers = {
+    rds_id      = aws_db_instance.main.id   # RDS가 새로 만들어질 때 재실행
+    script_hash = var.db_init_script_hash   # 스크립트가 바뀔 때도 재실행
+  }
   provisioner "local-exec" {
     command = "bash ${path.root}/scripts/db-schema-init.sh"
   }
 }
 ```
 
-`triggers`에 적은 값이 바뀔 때만 재실행됩니다. 매 `terraform apply`마다 실행되지 않도록 RDS ID를 트리거로 걸었습니다.
+`triggers`에 적은 값이 바뀔 때만 재실행됩니다. `script_hash`는 호출하는 쪽(`envs/prod/main.tf` 등)에서 `filemd5()`로 계산해 변수로 넘깁니다. 모듈이 직접 파일을 읽으면 실행 위치(`path.root`)에 따라 경로가 달라지기 때문입니다.
 
 ---
 
@@ -282,18 +284,15 @@ credit_alarms = {
 
 ## 13. 파일별 코드 빠른 색인
 
-### 루트 파일
+### 환경 폴더 (envs/prod/ 또는 envs/dev/)
 
 | 보고 싶은 코드 | 파일 |
 |---|---|
-| 버전 고정, state 저장 위치(S3 backend) | `versions.tf` |
-| 리전, 공통 태그, AMI 조회, 모듈 6개 호출 | `main.tf` |
-| 입력값(손잡이) 정의 | `variables.tf` |
+| 버전 고정, state 저장 위치(S3 backend, 환경별 key) | `versions.tf` |
+| 리전, 공통 태그, AMI 조회, 모듈 8개 호출 | `main.tf` |
+| 입력값(손잡이) 정의 + 환경 기본값 | `variables.tf` |
 | `name` 접두사 | `locals.tf` |
-| IAM 역할 전체(ECS, EC2, GitHub OIDC) | `iam.tf` |
-| secret_arns 조회표, Kafka SSM 파라미터 | `ssm.tf` |
 | 출력 주소 | `outputs.tf` |
-| 기존 인프라 모듈화 시 주소 이전 선언 | `moved.tf` |
 | state용 S3 + 영구 시크릿(prevent_destroy) | `bootstrap/main.tf` |
 
 ### 모듈 파일
@@ -303,10 +302,12 @@ credit_alarms = {
 | VPC/서브넷/라우팅 + 보안 그룹/규칙(순환 참조 처리) | `modules/network/main.tf` |
 | dynamic 리스너, 대상 그룹 | `modules/edge/main.tf` |
 | RDS, null_resource 스키마 초기화, Redis | `modules/data/main.tf` |
-| Kafka EC2 3대, 모니터링 EC2 | `modules/compute-ec2/main.tf` |
+| Kafka EC2 (`kafka_count`대), 모니터링 EC2 | `modules/compute-ec2/main.tf` |
 | **services 정의표, 환경변수 조합, keycloak_url** | `modules/ecs/main.tf` |
 | ECR 저장소(services에서 목록 가져옴) | `modules/ecs/main.tf` |
 | services 표를 도는 ECS 리소스, service_env, secrets 주입 | `modules/ecs/main.tf` |
 | bid 오토스케일링 | `modules/ecs/main.tf` |
 | keycloak(공개 이미지) | `modules/ecs/main.tf` |
 | t3 크레딧 계산 경보 | `modules/observability/main.tf` |
+| IAM 역할 전체(ECS, EC2, GitHub OIDC) | `modules/iam/main.tf` |
+| secret_arns 조회표, Kafka SSM 파라미터 | `modules/ssm/main.tf` |

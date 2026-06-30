@@ -54,5 +54,5 @@ output "ecs_cluster_name" {
 
 output "github_actions_role_arn" {
   description = "GitHub Actions가 assume할 역할 ARN"
-  value       = var.enable_github_oidc ? aws_iam_role.github_actions[0].arn : "(disabled)"
+  value       = module.iam.github_actions_role_arn != null ? module.iam.github_actions_role_arn : "(disabled)"
 }
