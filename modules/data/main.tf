@@ -43,7 +43,8 @@ resource "null_resource" "db_schema_init" {
   depends_on = [aws_db_instance.main]
 
   triggers = {
-    rds_id = aws_db_instance.main.id
+    rds_id      = aws_db_instance.main.id
+    script_hash = filemd5("${path.root}/scripts/db-schema-init.sh")
   }
 
   provisioner "local-exec" {
