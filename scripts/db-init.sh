@@ -1,6 +1,9 @@
 #!/bin/bash
-# RDS 스키마 초기화 스크립트
-# terraform apply 후에 실행합니다.
+# [비상 복구용] RDS 스키마 수동 초기화 스크립트
+#
+# 정상 운영 시에는 terraform apply가 null_resource(db_schema_init)를 통해
+# db-schema-init.sh를 자동 실행합니다. 이 스크립트는 자동화가 실패했을 때
+# 수동으로 keycloak_schema / langfuse_schema를 생성하는 용도로만 사용합니다.
 #
 # 사용법:
 #   bash scripts/db-init.sh
