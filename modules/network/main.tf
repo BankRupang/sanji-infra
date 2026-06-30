@@ -170,13 +170,15 @@ resource "aws_security_group_rule" "ecs_in_self" {
 }
 
 resource "aws_security_group_rule" "ecs_in_from_monitoring" {
+  for_each = toset(["8000", "8761", "8888", "19091", "19092", "19093", "19094", "19095", "19096", "19097"])
+
   type                     = "ingress"
   security_group_id        = aws_security_group.ecs.id
-  from_port                = 0
-  to_port                  = 65535
+  from_port                = tonumber(each.value)
+  to_port                  = tonumber(each.value)
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.monitoring.id
-  description              = "Prometheus scrape actuator"
+  description              = "Prometheus scrape ECS actuator ${each.value}"
 }
 
 resource "aws_security_group_rule" "rds_in_from_ecs" {
@@ -222,13 +224,15 @@ resource "aws_security_group_rule" "kafka_in_from_ecs" {
 }
 
 resource "aws_security_group_rule" "kafka_in_from_monitoring" {
+  for_each = toset(["9092", "7071", "9100"])
+
   type                     = "ingress"
   security_group_id        = aws_security_group.kafka.id
-  from_port                = 0
-  to_port                  = 65535
+  from_port                = tonumber(each.value)
+  to_port                  = tonumber(each.value)
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.monitoring.id
-  description              = "Monitoring scrape + Kafka UI"
+  description              = "Monitoring scrape Kafka port ${each.value}"
 }
 
 resource "aws_security_group_rule" "kafka_in_ssh" {
