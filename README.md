@@ -51,7 +51,6 @@ root
 │   ├── ssm-backup.sh          # destroy 전 SSM 파라미터 값 백업
 │   ├── ssm-restore.sh         # apply 후 SSM 파라미터 값 복구
 │   ├── db-schema-init.sh      # RDS 스키마 초기화 (null_resource 경유 자동 실행)
-│   └── (keycloak-setup.sh 삭제됨 - 메인 레포 scripts/로 이동)
 ├── docs/
 │   ├── DEPLOY.md              # 단계별 배포 가이드 문서
 │   └── INTRODUCTION.md        # 코드 설명 문서
