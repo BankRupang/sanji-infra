@@ -19,23 +19,26 @@ bash scripts/ssm-init.sh        # ssm-backup.json 생성
 # ssm-backup.json에서 "CHANGE_ME"를 실제 값으로 교체합니다.
 bash scripts/ssm-restore.sh     # ssm-backup.json 반영
 
-# 2) 본 인프라 배포
-terraform init    # "로컬 상태를 S3로 옮길까요?" → yes
-terraform plan    # -out=tfplan → 실행 계획 파일 생성
-terraform apply   # 실행 계획 파일을 생성한 경우 terraform apply tfplan
+# 2) 환경 폴더로 이동 후 인프라 배포 (prod 예시)
+cd envs/prod                    # 개발 환경이면 envs/dev
+cp terraform.tfvars.example terraform.tfvars
+# terraform.tfvars에서 db_password, admin_cidr 등 필수값 채우기
+terraform init
+terraform plan
+terraform apply
 
 # 3) 인프라 제거 후 재배포 시 전체 복구 절차
 terraform destroy
 terraform apply
 # GitHub Actions에서 Deploy EC2 수동 실행 (Kafka, 모니터링 EC2 배포)
-bash scripts/keycloak-setup.sh # Keycloak realm import + client-secret 발급 + SSM 저장
+bash ../../scripts/keycloak-setup.sh # Keycloak realm import + client-secret 발급 + SSM 저장
 # GitHub Actions에서 Deploy ECS 수동 실행 (workflow_dispatch)
 
 # 4) SSM 파라미터 값 저장
 # SSM Parameter Storage는 destroy되지 않기 때문에 별도로 저장할 필요는 없지만,
 # 다른 곳으로 import할 필요가 있을 경우 아래 스크립트를 실행해주세요.
-bash scripts/ssm-backup.sh    # ssm-backup.json 파일 생성
-bash scripts/ssm-restore.sh   # ssm-backup.json 파일 적용
+bash ../../scripts/ssm-backup.sh    # ssm-backup.json 파일 생성
+bash ../../scripts/ssm-restore.sh   # ssm-backup.json 파일 적용
 ```
 
 ## 파일 구성
@@ -55,25 +58,29 @@ root
 │   └── INTRODUCTION.md        # 코드 설명 문서
 │
 │   # ----------------------------------------------------
-│   # 루트: 설정 및 교차 관심사
+│   # 환경 진입점: 여기서 terraform init/apply 실행
 │   # ----------------------------------------------------
-├── versions.tf                # 테라폼/프로바이더 버전 고정 & S3 backend 설정
-├── main.tf                    # AWS 리전/데이터 조회 + 모듈 6개 호출
-├── variables.tf               # 전역 변수 정의 목록
-├── terraform.tfvars.example   # 전역 변수 입력 값 예시 파일
-├── locals.tf                  # name 접두사 (project-environment)
-├── outputs.tf                 # 배포 완료 후 결과물(접속 주소 등) 출력
-├── iam.tf                     # AWS 권한 역할 (ECS, EC2, GitHub Actions OIDC)
-├── ssm.tf                     # 파라미터 스토어 / 시크릿 관리 보관함
-├── moved.tf                   # 모듈화 시 기존 state 주소 이전 선언
+├── envs/
+│   ├── prod/                  # 운영 환경 (S3 state key: prod/terraform.tfstate)
+│   │   ├── main.tf            # 모듈 6개 호출
+│   │   ├── variables.tf       # 변수 정의 (기본값: prod 사양)
+│   │   ├── versions.tf        # 버전 고정 & S3 backend
+│   │   ├── locals.tf / iam.tf / ssm.tf / outputs.tf
+│   │   └── terraform.tfvars.example
+│   └── dev/                   # 개발 환경 (S3 state key: dev/terraform.tfstate)
+│       ├── main.tf            # 모듈 6개 호출 (kafka_count=1, t3.micro)
+│       ├── variables.tf       # 변수 정의 (기본값: dev 사양)
+│       ├── versions.tf        # 버전 고정 & S3 backend
+│       ├── locals.tf / iam.tf / ssm.tf / outputs.tf
+│       └── terraform.tfvars.example
 │
 │   # ----------------------------------------------------
-│   # 모듈: 기능 단위로 분리된 리소스 묶음
+│   # 모듈: 기능 단위로 분리된 리소스 묶음 (envs/*/가 공유)
 │   # ----------------------------------------------------
 └── modules/
     ├── network/               # VPC, 서브넷, IGW, 라우팅, 보안 그룹 전체
     ├── edge/                  # ALB, 대상 그룹, HTTP/HTTPS 리스너
-    ├── compute-ec2/           # Kafka EC2 3대, 모니터링 EC2
+    ├── compute-ec2/           # Kafka EC2 (kafka_count대), 모니터링 EC2
     ├── data/                  # RDS(PostgreSQL), ElastiCache(Redis), DB 스키마 초기화
     ├── ecs/                   # ECR, ECS 클러스터, 서비스 9개 + bid + Keycloak
     └── observability/         # CloudWatch 경보, SNS 알림
@@ -99,9 +106,9 @@ graph TD
     classDef compute fill:#bfb,stroke:#333,stroke-width:1px;
     classDef obs fill:#eee,stroke:#333,stroke-width:1px;
 
-    subgraph Root ["루트 파일"]
+    subgraph Root ["설정 파일"]
         bootstrap["bootstrap/<br>(S3 + SSM 초기화)"]
-        main["main.tf<br>(프로바이더 + 모듈 호출)"]
+        main["envs/prod/ 또는 envs/dev/<br>(프로바이더 + 모듈 호출)"]
         iam["iam.tf<br>(ECS/EC2/OIDC 역할)"]
         ssm["ssm.tf<br>(시크릿/파라미터)"]
     end
@@ -123,7 +130,7 @@ graph TD
     class rds data;
 
     subgraph Mod_EC2 ["modules/compute-ec2"]
-        ec2["Kafka EC2 x3<br>모니터링 EC2"]
+        ec2["Kafka EC2 (kafka_count대)<br>모니터링 EC2"]
     end
     class ec2 compute;
 
