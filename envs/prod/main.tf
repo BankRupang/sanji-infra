@@ -36,7 +36,7 @@ data "aws_ami" "al2023" {
 # ============================================================================
 
 module "network" {
-  source = "./modules/network"
+  source = "../../modules/network"
 
   name               = local.name
   vpc_cidr           = var.vpc_cidr
@@ -47,7 +47,7 @@ module "network" {
 }
 
 module "edge" {
-  source = "./modules/edge"
+  source = "../../modules/edge"
 
   name                = local.name
   sg_alb_id           = module.network.sg_alb_id
@@ -57,7 +57,7 @@ module "edge" {
 }
 
 module "compute_ec2" {
-  source = "./modules/compute-ec2"
+  source = "../../modules/compute-ec2"
 
   name                      = local.name
   kafka_count               = var.kafka_count
@@ -74,7 +74,7 @@ module "compute_ec2" {
 }
 
 module "data" {
-  source = "./modules/data"
+  source = "../../modules/data"
 
   name                   = local.name
   project                = var.project
@@ -94,11 +94,11 @@ module "data" {
   sg_redis_id            = module.network.sg_redis_id
   monitoring_instance_id = module.compute_ec2.monitoring_instance_id
   db_password_ssm_path   = "/${var.project}/${var.environment}/db/password"
-  db_init_script_hash    = filemd5("${path.root}/scripts/db-schema-init.sh")
+  db_init_script_hash    = filemd5("${path.root}/../../scripts/db-schema-init.sh")
 }
 
 module "ecs" {
-  source = "./modules/ecs"
+  source = "../../modules/ecs"
 
   name                        = local.name
   project                     = var.project
@@ -126,7 +126,7 @@ module "ecs" {
 }
 
 module "observability" {
-  source = "./modules/observability"
+  source = "../../modules/observability"
 
   name                     = local.name
   alert_email              = var.alert_email

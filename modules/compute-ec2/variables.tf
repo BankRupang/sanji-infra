@@ -45,3 +45,9 @@ variable "ami_id" {
   description = "Amazon Linux 2023 AMI ID"
   type        = string
 }
+
+variable "kafka_count" {
+  description = "Kafka EC2 브로커 대수. dev=1, prod=3"
+  type        = number
+  default     = 3
+}

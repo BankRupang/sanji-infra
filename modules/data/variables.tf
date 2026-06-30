@@ -73,3 +73,8 @@ variable "db_password_ssm_path" {
   description = "DB 비밀번호가 저장된 SSM 파라미터 경로. 스크립트가 이 경로로 비밀번호를 읽음"
   type        = string
 }
+
+variable "db_init_script_hash" {
+  description = "db-schema-init.sh 파일의 MD5 해시. 스크립트가 바뀌면 null_resource가 재실행됩니다."
+  type        = string
+}
