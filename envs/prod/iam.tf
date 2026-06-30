@@ -114,6 +114,11 @@ data "aws_iam_policy_document" "ec2_ssm_read" {
     sid       = "S3DeployList"
     actions   = ["s3:ListBucket"]
     resources = ["arn:aws:s3:::sanji-terraform-state"]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["deploy/*"]
+    }
   }
 }
 
@@ -292,6 +297,11 @@ data "aws_iam_policy_document" "github_actions" {
     sid       = "S3DeployList"
     actions   = ["s3:ListBucket"]
     resources = ["arn:aws:s3:::sanji-terraform-state"]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["deploy/*"]
+    }
   }
 }
 
