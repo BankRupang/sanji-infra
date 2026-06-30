@@ -1,57 +1,115 @@
 # ============================================================================
-# 보안 그룹(Security Group)
+# 네트워크: VPC, 서브넷, IGW, 라우팅 + 보안 그룹
 # ============================================================================
-# 보안 그룹은 자원 앞에 선 방화벽입니다.
-# 인바운드(들어오는 트래픽)는 꼭 필요한 것만 허용합니다. 외부로 열린 문은 ALB 하나뿐입니다.
-#
-# 두 보안 그룹이 서로를 가리키면(예: ECS ↔ 모니터링) 순환 참조가 생기므로
-# 규칙은 보안 그룹과 분리한 aws_security_group_rule 로 따로 답니다.
 
-# 빈 보안 그룹 5개를 먼저 만들고 규칙은 아래에서 붙입니다.
+resource "aws_vpc" "main" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = { Name = "${var.name}-vpc" }
+}
+
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+  tags   = { Name = "${var.name}-igw" }
+}
+
+resource "aws_subnet" "public" {
+  for_each = var.availability_zones
+
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = each.value.public_cidr
+  availability_zone       = each.key
+  map_public_ip_on_launch = true
+
+  tags = { Name = "${var.name}-public-${each.key}" }
+}
+
+resource "aws_subnet" "private" {
+  for_each = var.availability_zones
+
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = each.value.private_cidr
+  availability_zone = each.key
+
+  tags = { Name = "${var.name}-private-${each.key}" }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = { Name = "${var.name}-public-rt" }
+}
+
+resource "aws_route_table_association" "public" {
+  for_each       = aws_subnet.public
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+  tags   = { Name = "${var.name}-private-rt" }
+}
+
+resource "aws_route_table_association" "private" {
+  for_each       = aws_subnet.private
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.private.id
+}
+
+# ============================================================================
+# 보안 그룹
+# ============================================================================
+
 resource "aws_security_group" "alb" {
-  name        = "${local.name}-alb-sg"
+  name        = "${var.name}-alb-sg"
   description = "ALB front door"
   vpc_id      = aws_vpc.main.id
-  tags        = { Name = "${local.name}-alb-sg" }
+  tags        = { Name = "${var.name}-alb-sg" }
 }
 
 resource "aws_security_group" "ecs" {
-  name        = "${local.name}-ecs-sg"
+  name        = "${var.name}-ecs-sg"
   description = "ECS Fargate tasks"
   vpc_id      = aws_vpc.main.id
-  tags        = { Name = "${local.name}-ecs-sg" }
+  tags        = { Name = "${var.name}-ecs-sg" }
 }
 
 resource "aws_security_group" "rds" {
-  name        = "${local.name}-rds-sg"
+  name        = "${var.name}-rds-sg"
   description = "RDS PostgreSQL"
   vpc_id      = aws_vpc.main.id
-  tags        = { Name = "${local.name}-rds-sg" }
+  tags        = { Name = "${var.name}-rds-sg" }
 }
 
 resource "aws_security_group" "redis" {
-  name        = "${local.name}-redis-sg"
+  name        = "${var.name}-redis-sg"
   description = "ElastiCache Redis"
   vpc_id      = aws_vpc.main.id
-  tags        = { Name = "${local.name}-redis-sg" }
+  tags        = { Name = "${var.name}-redis-sg" }
 }
 
 resource "aws_security_group" "kafka" {
-  name        = "${local.name}-kafka-sg"
+  name        = "${var.name}-kafka-sg"
   description = "Kafka EC2"
   vpc_id      = aws_vpc.main.id
-  tags        = { Name = "${local.name}-kafka-sg" }
+  tags        = { Name = "${var.name}-kafka-sg" }
 }
 
 resource "aws_security_group" "monitoring" {
-  name        = "${local.name}-monitoring-sg"
+  name        = "${var.name}-monitoring-sg"
   description = "Monitoring EC2 (Prometheus/Loki/Grafana)"
   vpc_id      = aws_vpc.main.id
-  tags        = { Name = "${local.name}-monitoring-sg" }
+  tags        = { Name = "${var.name}-monitoring-sg" }
 }
 
-# 모든 보안 그룹의 아웃바운드(나가는 트래픽)는 전부 허용합니다.
-# (ECR pull, 외부 API 호출, AWS API 등 나가는 길은 막지 않습니다)
 resource "aws_security_group_rule" "egress_all" {
   for_each = {
     alb        = aws_security_group.alb.id
@@ -70,7 +128,6 @@ resource "aws_security_group_rule" "egress_all" {
   description       = "allow all outbound"
 }
 
-# --- ALB: 외부에서 오는 HTTP(80) 허용 (HTTPS는 인증서 있을 때) ---
 resource "aws_security_group_rule" "alb_in_http" {
   type              = "ingress"
   security_group_id = aws_security_group.alb.id
@@ -92,8 +149,6 @@ resource "aws_security_group_rule" "alb_in_https" {
   description       = "public HTTPS"
 }
 
-# --- ECS 태스크 ---
-# 1) ALB가 gateway(8000)로 보내는 트래픽 허용
 resource "aws_security_group_rule" "ecs_in_from_alb" {
   type                     = "ingress"
   security_group_id        = aws_security_group.ecs.id
@@ -104,7 +159,6 @@ resource "aws_security_group_rule" "ecs_in_from_alb" {
   description              = "ALB to gateway"
 }
 
-# 2) 서비스끼리 서로 호출(Eureka, Config, STOMP 등) 같은 SG 안끼리 전부 허용
 resource "aws_security_group_rule" "ecs_in_self" {
   type                     = "ingress"
   security_group_id        = aws_security_group.ecs.id
@@ -115,18 +169,18 @@ resource "aws_security_group_rule" "ecs_in_self" {
   description              = "service to service"
 }
 
-# 3) 모니터링 EC2의 Prometheus가 각 태스크의 /actuator/prometheus 를 긁어감
 resource "aws_security_group_rule" "ecs_in_from_monitoring" {
+  for_each = toset(["8000", "8761", "8888", "19091", "19092", "19093", "19094", "19095", "19096", "19097"])
+
   type                     = "ingress"
   security_group_id        = aws_security_group.ecs.id
-  from_port                = 0
-  to_port                  = 65535
+  from_port                = tonumber(each.value)
+  to_port                  = tonumber(each.value)
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.monitoring.id
-  description              = "Prometheus scrape actuator"
+  description              = "Prometheus scrape ECS actuator ${each.value}"
 }
 
-# --- RDS: ECS 태스크에서 오는 5432만 허용 ---
 resource "aws_security_group_rule" "rds_in_from_ecs" {
   type                     = "ingress"
   security_group_id        = aws_security_group.rds.id
@@ -137,7 +191,6 @@ resource "aws_security_group_rule" "rds_in_from_ecs" {
   description              = "ECS to PostgreSQL"
 }
 
-# 모니터링 EC2에서 DB 스키마 초기화 등 관리 작업용
 # RDS가 Private Subnet에 있어 SQL 파일을 실행하려면 VPC 안에 있는 무언가가 대신 실행해줘야 함
 # db_init만을 위해 별도 EC2(Bastion)를 만드는 것은 실익이 없다고 판단했음
 resource "aws_security_group_rule" "rds_in_from_monitoring" {
@@ -150,7 +203,6 @@ resource "aws_security_group_rule" "rds_in_from_monitoring" {
   description              = "Monitoring EC2 admin access to PostgreSQL"
 }
 
-# --- Redis: ECS 태스크에서 오는 6379만 허용 ---
 resource "aws_security_group_rule" "redis_in_from_ecs" {
   type                     = "ingress"
   security_group_id        = aws_security_group.redis.id
@@ -161,8 +213,6 @@ resource "aws_security_group_rule" "redis_in_from_ecs" {
   description              = "ECS to Redis"
 }
 
-# --- Kafka EC2 ---
-# 1) ECS 태스크(프로듀서/컨슈머)에서 9092 허용
 resource "aws_security_group_rule" "kafka_in_from_ecs" {
   type                     = "ingress"
   security_group_id        = aws_security_group.kafka.id
@@ -173,18 +223,18 @@ resource "aws_security_group_rule" "kafka_in_from_ecs" {
   description              = "ECS to Kafka broker"
 }
 
-# 2) 모니터링 EC2가 JMX Exporter(7071), Node Exporter(9100), Kafka(9092 for UI) 를 봄
 resource "aws_security_group_rule" "kafka_in_from_monitoring" {
+  for_each = toset(["9092", "7071", "9100"])
+
   type                     = "ingress"
   security_group_id        = aws_security_group.kafka.id
-  from_port                = 0
-  to_port                  = 65535
+  from_port                = tonumber(each.value)
+  to_port                  = tonumber(each.value)
   protocol                 = "tcp"
   source_security_group_id = aws_security_group.monitoring.id
-  description              = "Monitoring scrape + Kafka UI"
+  description              = "Monitoring scrape Kafka port ${each.value}"
 }
 
-# 3) 관리자 SSH(22) (키페어가 있을 때만 의미 있음)
 resource "aws_security_group_rule" "kafka_in_ssh" {
   type              = "ingress"
   security_group_id = aws_security_group.kafka.id
@@ -195,7 +245,6 @@ resource "aws_security_group_rule" "kafka_in_ssh" {
   description       = "admin SSH"
 }
 
-# 4) Kafka 브로커 간 통신 (Quorum 9093, Broker 9092)
 resource "aws_security_group_rule" "kafka_in_self" {
   type                     = "ingress"
   security_group_id        = aws_security_group.kafka.id
@@ -206,8 +255,6 @@ resource "aws_security_group_rule" "kafka_in_self" {
   description              = "Kafka internal communication (9092, 9093)"
 }
 
-# --- 모니터링 EC2 ---
-# 1) 관리자 브라우저 접근: Grafana(3000), Prometheus(9090), Kafka UI(8080), SSH(22)
 resource "aws_security_group_rule" "monitoring_in_admin" {
   for_each          = toset(["3000", "9090", "8080", "22"])
   type              = "ingress"
@@ -219,7 +266,6 @@ resource "aws_security_group_rule" "monitoring_in_admin" {
   description       = "admin access ${each.value}"
 }
 
-# 2) ECS 앱이 로그를 Loki(3100)로 push
 resource "aws_security_group_rule" "monitoring_in_loki_from_ecs" {
   type                     = "ingress"
   security_group_id        = aws_security_group.monitoring.id
