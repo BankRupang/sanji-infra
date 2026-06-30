@@ -50,8 +50,8 @@ graph TD
 | data | `modules/data/` | RDS, Redis, DB 스키마 초기화 |
 | ecs | `modules/ecs/` | ECR, ECS 클러스터/서비스 전체 |
 | observability | `modules/observability/` | CloudWatch 경보, SNS |
-
-각 환경 폴더 안의 `iam.tf`와 `ssm.tf`는 여러 모듈에 걸친 IAM 역할과 SSM 파라미터를 담당합니다.
+| iam | `modules/iam/` | ECS/EC2/GitHub Actions IAM 역할 전체 |
+| ssm | `modules/ssm/` | SSM 파라미터 생성 + bootstrap 시크릿 ARN 조회 |
 
 각 모듈 안의 `locals`는 **자원이 만들어진 뒤의 결과값**도 참조합니다.
 예를 들어 RDS 주소(`aws_db_instance.main.address`)는 RDS를 만들기 전엔 모르는 값이라, 그걸 쓰는 환경변수는 `modules/ecs/`의 `locals`에서 "RDS가 생긴 뒤" 조합됩니다.
@@ -128,7 +128,7 @@ service_env = {
 
 ## 5. 시크릿을 코드에 안 적고 SSM ARN으로 연결하는 법
 
-비밀번호/API 키는 코드에 직접 안 적습니다. `ssm.tf`가 시크릿 키 이름 → SSM 주소(ARN) 조회표를 만들고, 태스크 정의는 그 표를 보고 값을 끌어옵니다.
+비밀번호/API 키는 코드에 직접 안 적습니다. `modules/ssm/main.tf`가 시크릿 키 이름 → SSM 주소(ARN) 조회표를 만들고, 태스크 정의는 그 표를 보고 값을 끌어옵니다.
 
 ### 5-1. 조회표(secret_arns)가 만들어지는 과정
 
@@ -162,11 +162,11 @@ secrets = [for env_name, key in each.value.secrets : { name = env_name, valueFro
 | 자원 | 조건 | 위치 |
 |---|---|---|
 | HTTPS 리스너, ALB 443 인바운드 | `acm_certificate_arn`이 비어있지 않을 때 | `modules/edge/main.tf`, `modules/network/main.tf` |
-| GitHub OIDC 프로바이더/역할 | `enable_github_oidc = true`일 때 | `iam.tf` |
+| GitHub OIDC 프로바이더/역할 | `enable_github_oidc = true`일 때 | `modules/iam/main.tf` |
 | SNS 주제/이메일 구독 | `alert_email`이 비어있지 않을 때 | `modules/observability/main.tf` |
 
 `count`로 만든 자원은 `[0]`을 붙여 가리킵니다. 예: `aws_iam_role.github_actions[0].arn`.
-`outputs.tf`에서도 `var.enable_github_oidc ? aws_iam_role.github_actions[0].arn : "(disabled)"`처럼 조건을 한 번 더 확인합니다. (없는 걸 가리키면 에러나기 때문)
+`outputs.tf`에서도 `module.iam.github_actions_role_arn != null ? module.iam.github_actions_role_arn : "(disabled)"`처럼 조건을 한 번 더 확인합니다. (없는 걸 가리키면 에러나기 때문)
 
 ---
 
@@ -289,11 +289,9 @@ credit_alarms = {
 | 보고 싶은 코드 | 파일 |
 |---|---|
 | 버전 고정, state 저장 위치(S3 backend, 환경별 key) | `versions.tf` |
-| 리전, 공통 태그, AMI 조회, 모듈 6개 호출 | `main.tf` |
+| 리전, 공통 태그, AMI 조회, 모듈 8개 호출 | `main.tf` |
 | 입력값(손잡이) 정의 + 환경 기본값 | `variables.tf` |
 | `name` 접두사 | `locals.tf` |
-| IAM 역할 전체(ECS, EC2, GitHub OIDC) | `iam.tf` |
-| secret_arns 조회표, Kafka SSM 파라미터 | `ssm.tf` |
 | 출력 주소 | `outputs.tf` |
 | state용 S3 + 영구 시크릿(prevent_destroy) | `bootstrap/main.tf` |
 
@@ -304,10 +302,12 @@ credit_alarms = {
 | VPC/서브넷/라우팅 + 보안 그룹/규칙(순환 참조 처리) | `modules/network/main.tf` |
 | dynamic 리스너, 대상 그룹 | `modules/edge/main.tf` |
 | RDS, null_resource 스키마 초기화, Redis | `modules/data/main.tf` |
-| Kafka EC2 3대, 모니터링 EC2 | `modules/compute-ec2/main.tf` |
+| Kafka EC2 (`kafka_count`대), 모니터링 EC2 | `modules/compute-ec2/main.tf` |
 | **services 정의표, 환경변수 조합, keycloak_url** | `modules/ecs/main.tf` |
 | ECR 저장소(services에서 목록 가져옴) | `modules/ecs/main.tf` |
 | services 표를 도는 ECS 리소스, service_env, secrets 주입 | `modules/ecs/main.tf` |
 | bid 오토스케일링 | `modules/ecs/main.tf` |
 | keycloak(공개 이미지) | `modules/ecs/main.tf` |
 | t3 크레딧 계산 경보 | `modules/observability/main.tf` |
+| IAM 역할 전체(ECS, EC2, GitHub OIDC) | `modules/iam/main.tf` |
+| secret_arns 조회표, Kafka SSM 파라미터 | `modules/ssm/main.tf` |
