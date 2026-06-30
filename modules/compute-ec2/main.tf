@@ -19,7 +19,7 @@ locals {
 }
 
 resource "aws_instance" "kafka" {
-  count                       = 3
+  count                       = var.kafka_count
   ami                         = var.ami_id
   instance_type               = var.kafka_instance_type
   subnet_id                   = var.primary_public_subnet_id

@@ -36,7 +36,7 @@ data "aws_ami" "al2023" {
 # ============================================================================
 
 module "network" {
-  source = "./modules/network"
+  source = "../../modules/network"
 
   name               = local.name
   vpc_cidr           = var.vpc_cidr
@@ -47,7 +47,7 @@ module "network" {
 }
 
 module "edge" {
-  source = "./modules/edge"
+  source = "../../modules/edge"
 
   name                = local.name
   sg_alb_id           = module.network.sg_alb_id
@@ -56,10 +56,22 @@ module "edge" {
   acm_certificate_arn = var.acm_certificate_arn
 }
 
+module "iam" {
+  source = "../../modules/iam"
+
+  name               = local.name
+  project            = var.project
+  aws_region         = var.aws_region
+  account_id         = data.aws_caller_identity.current.account_id
+  enable_github_oidc = var.enable_github_oidc
+  github_repo        = var.github_repo
+}
+
 module "compute_ec2" {
-  source = "./modules/compute-ec2"
+  source = "../../modules/compute-ec2"
 
   name                      = local.name
+  kafka_count               = var.kafka_count
   kafka_instance_type       = var.kafka_instance_type
   kafka_volume_size         = var.kafka_volume_size
   monitoring_instance_type  = var.monitoring_instance_type
@@ -68,12 +80,12 @@ module "compute_ec2" {
   sg_kafka_id               = module.network.sg_kafka_id
   sg_monitoring_id          = module.network.sg_monitoring_id
   ec2_key_name              = var.ec2_key_name
-  iam_instance_profile_name = aws_iam_instance_profile.ec2.name
+  iam_instance_profile_name = module.iam.ec2_instance_profile_name
   ami_id                    = data.aws_ami.al2023.id
 }
 
 module "data" {
-  source = "./modules/data"
+  source = "../../modules/data"
 
   name                   = local.name
   project                = var.project
@@ -93,10 +105,11 @@ module "data" {
   sg_redis_id            = module.network.sg_redis_id
   monitoring_instance_id = module.compute_ec2.monitoring_instance_id
   db_password_ssm_path   = "/${var.project}/${var.environment}/db/password"
+  db_init_script_hash    = filemd5("${path.root}/../../scripts/db-schema-init.sh")
 }
 
 module "ecs" {
-  source = "./modules/ecs"
+  source = "../../modules/ecs"
 
   name                        = local.name
   project                     = var.project
@@ -114,17 +127,27 @@ module "ecs" {
   db_username                 = var.db_username
   redis_address               = module.data.redis_address
   kafka_bootstrap_servers     = module.compute_ec2.kafka_bootstrap_servers
-  ecs_task_execution_role_arn = aws_iam_role.ecs_task_execution.arn
-  ecs_task_role_arn           = aws_iam_role.ecs_task.arn
-  secret_arns                 = local.secret_arns
+  ecs_task_execution_role_arn = module.iam.ecs_task_execution_role_arn
+  ecs_task_role_arn           = module.iam.ecs_task_role_arn
+  secret_arns                 = module.ssm.secret_arns
   bid_min_capacity            = var.bid_min_capacity
   bid_max_capacity            = var.bid_max_capacity
   bid_cpu_target              = var.bid_cpu_target
   monitoring_private_ip       = module.compute_ec2.monitoring_private_ip
 }
 
+module "ssm" {
+  source = "../../modules/ssm"
+
+  project                 = var.project
+  environment             = var.environment
+  db_password             = var.db_password
+  kafka_bootstrap_servers = module.compute_ec2.kafka_bootstrap_servers
+  kafka_quorum_voters     = module.compute_ec2.kafka_quorum_voters
+}
+
 module "observability" {
-  source = "./modules/observability"
+  source = "../../modules/observability"
 
   name                     = local.name
   alert_email              = var.alert_email

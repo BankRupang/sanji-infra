@@ -1,0 +1,47 @@
+# ============================================================================
+# dev 환경 변수 값 예시 파일
+# ============================================================================
+# 사용법:
+#   1) 이 파일을 terraform.tfvars 라는 이름으로 복사합니다.
+#        cp terraform.tfvars.example terraform.tfvars
+#   2) 아래 값을 우리 환경에 맞게 채웁니다.
+#   3) terraform.tfvars 는 비밀번호가 들어가므로 git에 올리지 않습니다.
+
+# --- 공통 ---
+project       = "sanji"
+environment   = "dev"
+aws_region    = "ap-northeast-2"
+spring_profile = "dev"
+
+# --- 네트워크 ---
+# dev는 prod와 IP 대역이 겹치지 않도록 10.1.x.x를 씁니다.
+admin_cidr = "0.0.0.0/0" # dev는 팀원 전체가 접근할 수 있도록 열어두는 것도 허용
+
+# --- 데이터베이스 (필수) ---
+db_name     = "sanji"
+db_username = "sanji"
+db_password = "dev-database-password" # 필수. 운영과 다른 비밀번호를 쓰세요
+
+# --- EC2 ---
+# dev는 비용 절감을 위해 단일 브로커 + 작은 인스턴스로 운영합니다.
+kafka_count              = 1
+kafka_instance_type      = "t3.micro"
+kafka_volume_size        = 20
+monitoring_instance_type = "t3.micro"
+monitoring_volume_size   = 30
+
+ec2_key_name = ""
+
+# --- Bid 오토스케일링 ---
+# dev는 태스크를 최소화합니다.
+bid_min_capacity = 1
+bid_max_capacity = 2
+
+# --- CI/CD ---
+# dev 환경은 OIDC 역할을 만들지 않습니다.
+enable_github_oidc = false
+github_repo        = "BankRupang/san-ji-jik-kyeng"
+
+# --- 알람 (선택) ---
+# dev는 알람 메일이 필요 없을 수 있습니다.
+# alert_email = ""
