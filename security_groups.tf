@@ -195,6 +195,17 @@ resource "aws_security_group_rule" "kafka_in_ssh" {
   description       = "admin SSH"
 }
 
+# 4) Kafka 브로커 간 통신 (Quorum 9093, Broker 9092)
+resource "aws_security_group_rule" "kafka_in_self" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.kafka.id
+  from_port                = 0
+  to_port                  = 0
+  protocol                 = "-1"
+  source_security_group_id = aws_security_group.kafka.id
+  description              = "Kafka internal communication (9092, 9093)"
+}
+
 # --- 모니터링 EC2 ---
 # 1) 관리자 브라우저 접근: Grafana(3000), Prometheus(9090), Kafka UI(8080), SSH(22)
 resource "aws_security_group_rule" "monitoring_in_admin" {

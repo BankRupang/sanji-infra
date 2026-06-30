@@ -52,9 +52,17 @@ locals {
 
 # ---- 메인 스택: Kafka / EC2 관련 파라미터 ----
 
-# Kafka EC2 사설 IP: Terraform이 인스턴스를 만들면서 자동으로 채웁니다.
+# Kafka EC2 사설 IP (3대 리스트): Terraform이 인스턴스를 만들면서 자동으로 채웁니다.
+# 앱 서비스 (application.yml) 에서는 KAFKA_BOOTSTRAP_SERVERS 로 참조합니다.
 resource "aws_ssm_parameter" "kafka_private_ip" {
   name  = "/${var.project}/${var.environment}/kafka/private-ip"
   type  = "String"
-  value = aws_instance.kafka.private_ip
+  value = join(",", [for i in aws_instance.kafka : "${i.private_ip}:9092"])
+}
+
+# Kafka Quorum 투표자 리스트 (3대): 브로커 간 클러스터 구성용 (예: 1@ip:9093,2@ip:9093,3@ip:9093)
+resource "aws_ssm_parameter" "kafka_quorum_voters" {
+  name  = "/${var.project}/${var.environment}/kafka/quorum-voters"
+  type  = "String"
+  value = join(",", [for i, inst in aws_instance.kafka : "${i + 1}@${inst.private_ip}:9093"])
 }
