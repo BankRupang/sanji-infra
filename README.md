@@ -62,16 +62,16 @@ root
 │   # ----------------------------------------------------
 ├── envs/
 │   ├── prod/                  # 운영 환경 (S3 state key: prod/terraform.tfstate)
-│   │   ├── main.tf            # 모듈 6개 호출
+│   │   ├── main.tf            # 모듈 8개 호출
 │   │   ├── variables.tf       # 변수 정의 (기본값: prod 사양)
 │   │   ├── versions.tf        # 버전 고정 & S3 backend
-│   │   ├── locals.tf / iam.tf / ssm.tf / outputs.tf
+│   │   ├── locals.tf / outputs.tf
 │   │   └── terraform.tfvars.example
 │   └── dev/                   # 개발 환경 (S3 state key: dev/terraform.tfstate)
-│       ├── main.tf            # 모듈 6개 호출 (kafka_count=1, t3.micro)
+│       ├── main.tf            # 모듈 8개 호출 (kafka_count=1, t3.micro)
 │       ├── variables.tf       # 변수 정의 (기본값: dev 사양)
 │       ├── versions.tf        # 버전 고정 & S3 backend
-│       ├── locals.tf / iam.tf / ssm.tf / outputs.tf
+│       ├── locals.tf / outputs.tf
 │       └── terraform.tfvars.example
 │
 │   # ----------------------------------------------------
@@ -83,7 +83,9 @@ root
     ├── compute-ec2/           # Kafka EC2 (kafka_count대), 모니터링 EC2
     ├── data/                  # RDS(PostgreSQL), ElastiCache(Redis), DB 스키마 초기화
     ├── ecs/                   # ECR, ECS 클러스터, 서비스 9개 + bid + Keycloak
-    └── observability/         # CloudWatch 경보, SNS 알림
+    ├── observability/         # CloudWatch 경보, SNS 알림
+    ├── iam/                   # ECS/EC2/GitHub Actions IAM 역할 전체
+    └── ssm/                   # SSM 파라미터 생성 + bootstrap 시크릿 ARN 조회
 ```
 
 ## 레이아웃
@@ -109,10 +111,8 @@ graph TD
     subgraph Root ["설정 파일"]
         bootstrap["bootstrap/<br>(S3 + SSM 초기화)"]
         main["envs/prod/ 또는 envs/dev/<br>(프로바이더 + 모듈 호출)"]
-        iam["iam.tf<br>(ECS/EC2/OIDC 역할)"]
-        ssm["ssm.tf<br>(시크릿/파라미터)"]
     end
-    class bootstrap,main,iam,ssm config;
+    class bootstrap,main config;
 
     subgraph Mod_Network ["modules/network"]
         net["VPC, 서브넷, IGW<br>보안 그룹 전체"]
@@ -144,8 +144,19 @@ graph TD
     end
     class cw obs;
 
+    subgraph Mod_IAM ["modules/iam"]
+        iam["ECS/EC2/OIDC 역할"]
+    end
+    class iam config;
+
+    subgraph Mod_SSM ["modules/ssm"]
+        ssm["시크릿 ARN 조회표<br>Kafka SSM 파라미터"]
+    end
+    class ssm config;
+
     bootstrap --> main
     main --> net
+    main --> iam
     net --> alb
     net --> rds
     net --> ec2
@@ -154,6 +165,9 @@ graph TD
     rds --> ecs
     ec2 --> ecs
     ec2 --> ssm
+    iam --> ec2
+    iam --> ecs
+    ssm --> ecs
     ecs --> cw
     alb --> cw
     rds --> cw
