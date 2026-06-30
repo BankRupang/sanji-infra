@@ -30,6 +30,7 @@ locals {
 
 # --- Kafka EC2 ---
 resource "aws_instance" "kafka" {
+  count                       = 3
   ami                         = data.aws_ami.al2023.id
   instance_type               = var.kafka_instance_type
   subnet_id                   = local.primary_public_subnet_id
@@ -50,8 +51,9 @@ resource "aws_instance" "kafka" {
   }
 
   tags = {
-    Name = "${local.name}-kafka"
-    Role = "kafka" # SSM Run Command 대상 지정에 사용
+    Name        = "${local.name}-kafka-${count.index + 1}"
+    Role        = "kafka" # SSM Run Command 대상 지정에 사용
+    KafkaNodeId = count.index + 1
   }
 }
 
