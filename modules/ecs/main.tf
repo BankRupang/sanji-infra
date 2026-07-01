@@ -82,6 +82,7 @@ locals {
   keycloak_url = "http://keycloak.${var.service_namespace}:18080"
 
   common_env = {
+    TZ                                        = "Asia/Seoul"
     SPRING_PROFILES_ACTIVE                    = var.spring_profile
     SPRING_CLOUD_CONFIG_URI                   = "http://config-server.${var.service_namespace}:8888"
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE      = "http://discovery-server.${var.service_namespace}:8761/eureka/"
