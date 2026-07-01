@@ -56,7 +56,13 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 
   default_capacity_provider_strategy {
     capacity_provider = "FARGATE"
+    base              = 1
     weight            = 1
+  }
+
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 3
   }
 }
 
@@ -243,7 +249,17 @@ resource "aws_ecs_service" "app" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app[each.key].arn
   desired_count   = 1
-  launch_type     = "FARGATE"
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    base              = 1
+    weight            = 1
+  }
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 3
+  }
 
   health_check_grace_period_seconds = each.value.alb ? 180 : null
 
