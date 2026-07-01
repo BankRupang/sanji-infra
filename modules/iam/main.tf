@@ -152,6 +152,7 @@ resource "aws_iam_role_policy" "ec2_ecs_discovery" {
 }
 
 # Grafana CloudWatch datasource가 리전 목록을 조회할 때 필요
+# deploy-kafka.sh가 KafkaNodeId 태그를 읽을 때도 필요
 resource "aws_iam_role_policy" "ec2_grafana_ec2" {
   name = "${var.name}-ec2-grafana-ec2"
   role = aws_iam_role.ec2.id
@@ -160,7 +161,7 @@ resource "aws_iam_role_policy" "ec2_grafana_ec2" {
     Statement = [{
       Sid      = "GrafanaDescribeRegions"
       Effect   = "Allow"
-      Action   = ["ec2:DescribeRegions"]
+      Action   = ["ec2:DescribeRegions", "ec2:DescribeTags"]
       Resource = "*"
     }]
   })

@@ -246,6 +246,7 @@ bash scripts/ssm-restore.sh
 | Spring Boot Actuator `/actuator/prometheus` 401 | gateway-server `SecurityConfig.java` 에 해당 경로가 `permitAll()` 에 포함되어 있는지 확인 |
 | `apply` 시 `/bin/bash` 없다는 에러 | Windows에서 로컬 실행 시 발생. `terraform.tfvars` 에 `bash_path = "C:/Program Files/Git/bin/bash.exe"` 추가 |
 | Deploy EC2 워크플로우에서 `ecs:ListTasks` AccessDeniedException | `terraform apply` 로 IAM 정책을 최신 상태로 반영한 뒤 워크플로우 재실행 |
+| Deploy EC2 kafka 배포에서 `ec2:DescribeTags` UnauthorizedOperation | Kafka EC2 인스턴스 역할에 `ec2:DescribeTags` 권한 미포함. `terraform apply` 로 IAM 정책을 최신 상태로 반영한 뒤 워크플로우 재실행 |
 
 ---
 
