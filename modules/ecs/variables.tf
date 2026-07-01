@@ -99,3 +99,21 @@ variable "monitoring_private_ip" {
   type        = string
 }
 
+variable "fargate_on_demand_base" {
+  description = "On-Demand로 보장할 최소 태스크 수. prod=1(안정성), dev=0"
+  type        = number
+  default     = 1
+}
+
+variable "fargate_on_demand_weight" {
+  description = "On-Demand 가중치. prod=1, dev=0(FARGATE_SPOT만 사용해 100% Spot)"
+  type        = number
+  default     = 1
+}
+
+variable "fargate_spot_weight" {
+  description = "Fargate Spot 가중치. 이 값이 클수록 Spot 비율이 높아짐"
+  type        = number
+  default     = 3
+}
+

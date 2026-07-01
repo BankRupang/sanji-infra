@@ -178,6 +178,26 @@ variable "keycloak_realm" {
   default     = "sanjijk"
 }
 
+# --- Fargate Spot ---
+
+variable "fargate_on_demand_base" {
+  description = "On-Demand로 보장할 최소 태스크 수"
+  type        = number
+  default     = 1
+}
+
+variable "fargate_on_demand_weight" {
+  description = "On-Demand 가중치"
+  type        = number
+  default     = 1
+}
+
+variable "fargate_spot_weight" {
+  description = "Fargate Spot 가중치"
+  type        = number
+  default     = 3
+}
+
 # --- Bid 오토스케일링 ---
 
 variable "bid_min_capacity" {
