@@ -295,25 +295,51 @@ credit_alarms = {
 `capacity_provider_strategy`는 태스크를 어떤 용량(On-Demand vs Spot)으로 띄울지 비율로 지정하는 블록입니다. `launch_type`이 없어야 이 블록이 동작합니다. (`launch_type`을 명시하면 capacity_provider_strategy를 무시합니다.)
 
 ```hcl
-resource "aws_ecs_service" "app" {
-  # launch_type = "FARGATE"  <-- 이 줄이 있으면 아래 블록이 무시됨
+# aws_ecs_cluster_capacity_providers (클러스터 기본 전략)
+resource "aws_ecs_cluster_capacity_providers" "main" {
+  # base=N: 최소 N개를 On-Demand로 보장. desired_count <= base이면 Spot이 쓰이지 않음
+  # weight=0: 해당 provider로 태스크를 배치하지 않음 (dev FARGATE=0 → 100% Spot)
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    base              = var.fargate_on_demand_base    # prod=1, dev=0
+    weight            = var.fargate_on_demand_weight  # prod=1, dev=0
+  }
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = var.fargate_spot_weight       # 기본 3
+  }
+}
 
+# aws_ecs_service.app - 서비스 레벨에도 동일하게 명시 (코드만 봐도 Spot 여부 파악 가능)
+resource "aws_ecs_service" "app" {
+  # launch_type 없음 → capacity_provider_strategy가 동작함
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
-    base              = 1   # 최소 1개는 반드시 On-Demand로
-    weight            = 1
+    base              = var.fargate_on_demand_base
+    weight            = var.fargate_on_demand_weight
   }
-
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
-    weight            = 3   # 추가 태스크는 Spot 3 : On-Demand 1 비율
+    weight            = var.fargate_spot_weight
   }
+  ...
+}
+
+# bid / keycloak - launch_type 명시로 항상 On-Demand (capacity_provider_strategy 무시됨)
+resource "aws_ecs_service" "bid" {
+  launch_type = "FARGATE"
+  ...
 }
 ```
 
-`base = 1`은 "이 capacity provider로 반드시 띄울 최솟값"입니다. `desired_count = 1`이면 base=1이 첫 태스크를 On-Demand로 채우고 Spot에 배분될 태스크가 없습니다. 스케일아웃으로 태스크가 2개 이상 되는 시점부터 추가분이 weight 비율(Spot 3 : On-Demand 1)로 배분됩니다.
+`base = N`은 "이 capacity provider로 반드시 띄울 최솟값"입니다. `weight = 0`이면 해당 provider는 태스크 배치 대상에서 제외됩니다. weight 유효 범위는 0~1000이며, 전략 안에서 하나 이상은 반드시 weight > 0이어야 합니다.
 
-클러스터 레벨의 `default_capacity_provider_strategy`도 같은 값으로 선언해 두면, 서비스 레벨 전략이 없는 경우의 기본값이 됩니다.
+| 환경 | FARGATE base | FARGATE weight | FARGATE_SPOT weight | 결과 |
+|---|---|---|---|---|
+| prod | 1 | 1 | 3 | 첫 태스크 On-Demand, 추가분 Spot 75% |
+| dev | 0 | 0 | 3 | 100% Spot |
+
+서비스 레벨 `capacity_provider_strategy`는 클러스터 기본값과 동일하더라도 명시적으로 유지합니다. 서비스 코드만 봐도 이 서비스가 Spot을 쓰는지 On-Demand인지 바로 알 수 있기 때문입니다.
 
 ---
 
