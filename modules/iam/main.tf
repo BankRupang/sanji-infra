@@ -96,13 +96,21 @@ resource "aws_iam_role_policy_attachment" "ec2_cloudwatch_ro" {
 }
 
 # EC2가 시작 스크립트에서 /sanji/* 파라미터(cluster-id, grafana 비밀번호 등)를 읽음
+# keycloak-setup.sh가 client-secret을 EC2에서 직접 SSM에 씀 (stdout 노출 방지)
 data "aws_iam_policy_document" "ec2_ssm_read" {
   statement {
     actions   = ["ssm:GetParameter", "ssm:GetParameters"]
     resources = ["arn:aws:ssm:${var.aws_region}:${var.account_id}:parameter/${var.project}/*"]
   }
   statement {
-    actions   = ["kms:Decrypt"]
+    sid     = "KeycloakClientSecretWrite"
+    actions = ["ssm:PutParameter"]
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${var.account_id}:parameter/${var.project}/*/keycloak/client-secret"
+    ]
+  }
+  statement {
+    actions   = ["kms:Decrypt", "kms:GenerateDataKey"]
     resources = [data.aws_kms_alias.ssm.target_key_arn]
   }
   statement {
