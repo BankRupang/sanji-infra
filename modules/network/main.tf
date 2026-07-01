@@ -170,7 +170,7 @@ resource "aws_security_group_rule" "ecs_in_self" {
 }
 
 resource "aws_security_group_rule" "ecs_in_from_monitoring" {
-  for_each = toset(["8000", "8761", "8888", "19091", "19092", "19093", "19094", "19095", "19096", "19097"])
+  for_each = toset(["8000", "8761", "8888", "18080", "19091", "19092", "19093", "19094", "19095", "19096", "19097"])
 
   type                     = "ingress"
   security_group_id        = aws_security_group.ecs.id
