@@ -60,7 +60,7 @@ locals {
 resource "aws_ssm_parameter" "kafka_private_ip" {
   name  = "/${var.project}/${var.environment}/kafka/private-ip"
   type  = "String"
-  value = var.kafka_bootstrap_servers
+  value = var.kafka_private_ips
 }
 
 # Kafka Quorum 투표자 리스트 (3대): 브로커 간 클러스터 구성용

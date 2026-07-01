@@ -146,8 +146,8 @@ module "ssm" {
   project                 = var.project
   environment             = var.environment
   db_password             = var.db_password
-  kafka_bootstrap_servers = module.compute_ec2.kafka_bootstrap_servers
-  kafka_quorum_voters     = module.compute_ec2.kafka_quorum_voters
+  kafka_private_ips   = join(",", module.compute_ec2.kafka_private_ips)
+  kafka_quorum_voters = module.compute_ec2.kafka_quorum_voters
 }
 
 module "observability" {

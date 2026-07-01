@@ -14,8 +14,8 @@ variable "db_password" {
   sensitive   = true
 }
 
-variable "kafka_bootstrap_servers" {
-  description = "Kafka 브로커 연결 주소 (쉼표 구분)"
+variable "kafka_private_ips" {
+  description = "Kafka 브로커 사설 IP 목록 (쉼표 구분, 포트 없음). 모니터링 스크립트가 prometheus 타겟으로 사용."
   type        = string
 }
 
