@@ -1,6 +1,6 @@
 output "kafka_instances" {
   description = "Kafka EC2 인스턴스 목록"
-  value       = aws_instance.kafka
+  value       = [for i in aws_instance.kafka : { id = i.id }]
 }
 
 output "kafka_private_ips" {

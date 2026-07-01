@@ -225,12 +225,22 @@ resource "null_resource" "db_schema_init" {
     script_hash = var.db_init_script_hash   # 스크립트가 바뀔 때도 재실행
   }
   provisioner "local-exec" {
-    command = "bash ${path.root}/scripts/db-schema-init.sh"
+    interpreter = [var.bash_path]
+    command     = "${path.module}/../../scripts/db-schema-init.sh"
   }
 }
 ```
 
 `triggers`에 적은 값이 바뀔 때만 재실행됩니다. `script_hash`는 호출하는 쪽(`envs/prod/main.tf` 등)에서 `filemd5()`로 계산해 변수로 넘깁니다. 모듈이 직접 파일을 읽으면 실행 위치(`path.root`)에 따라 경로가 달라지기 때문입니다.
+
+스크립트 경로는 `path.module`(= `modules/data/` 절대 경로)을 기준으로 두 단계 올라가 `sanji-infra/scripts/`를 가리킵니다. `path.root`(= 실행 중인 환경 폴더)를 쓰면 `envs/prod/scripts/`를 가리켜 경로가 틀어집니다.
+
+`bash_path`는 `modules/data/variables.tf`에 선언된 변수로, 기본값은 `/bin/bash`입니다. Windows에서 로컬 실행 시 `terraform.tfvars`에 Git Bash 경로를 넣어야 합니다.
+
+```hcl
+# terraform.tfvars (Windows 로컬 실행 시에만)
+bash_path = "C:/Program Files/Git/bin/bash.exe"
+```
 
 ---
 

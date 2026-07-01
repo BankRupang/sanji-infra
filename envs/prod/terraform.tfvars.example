@@ -35,3 +35,8 @@ github_repo = "BankRupang/san-ji-jik-kyeng"
 
 # --- 알람 (선택) ---
 # alert_email = "your-email@example.com"
+
+# --- Windows에서 로컬 실행 시 ---
+# CI/CD(Linux)에서는 기본값(/bin/bash)을 그대로 씁니다.
+# Windows에서 terraform apply를 직접 실행한다면 Git Bash 경로로 채우세요.
+# bash_path = "C:/Program Files/Git/bin/bash.exe"

@@ -106,6 +106,7 @@ module "data" {
   monitoring_instance_id = module.compute_ec2.monitoring_instance_id
   db_password_ssm_path   = "/${var.project}/${var.environment}/db/password"
   db_init_script_hash    = filemd5("${path.root}/../../scripts/db-schema-init.sh")
+  bash_path              = var.bash_path
 }
 
 module "ecs" {

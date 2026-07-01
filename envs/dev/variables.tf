@@ -249,3 +249,11 @@ variable "alert_email" {
   type        = string
   default     = ""
 }
+
+# --- 로컬 실행 ---
+
+variable "bash_path" {
+  description = "bash 실행 경로. Linux/CI 기본값 /bin/bash. Windows에서 실행 시 Git Bash 경로로 덮어쓰세요."
+  type        = string
+  default     = "/bin/bash"
+}

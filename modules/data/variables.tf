@@ -78,3 +78,9 @@ variable "db_init_script_hash" {
   description = "db-schema-init.sh 파일의 MD5 해시. 스크립트가 바뀌면 null_resource가 재실행됩니다."
   type        = string
 }
+
+variable "bash_path" {
+  description = "bash 실행 경로. Linux/CI: /bin/bash, Windows Git Bash: C:/Program Files/Git/bin/bash.exe"
+  type        = string
+  default     = "/bin/bash"
+}

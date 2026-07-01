@@ -48,7 +48,7 @@ resource "null_resource" "db_schema_init" {
   }
 
   provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-c"]
+    interpreter = [var.bash_path]
     environment = {
       REGION      = var.aws_region
       INSTANCE_ID = var.monitoring_instance_id
@@ -57,7 +57,7 @@ resource "null_resource" "db_schema_init" {
       DB_NAME     = var.db_name
       SSM_PW_PATH = var.db_password_ssm_path
     }
-    command = "bash ${path.root}/scripts/db-schema-init.sh"
+    command = "${path.module}/../../scripts/db-schema-init.sh"
   }
 }
 

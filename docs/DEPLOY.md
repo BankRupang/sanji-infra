@@ -244,6 +244,8 @@ bash scripts/ssm-restore.sh
 | Prometheus ECS 타겟 전부 Down | cron 미실행 가능성. EC2에서 `cat /home/ec2-user/ecs-discovery.log` 로 확인. 로그가 없으면 cron 등록 실패. `Deploy EC2` 워크플로우 재실행으로 cron 재등록 |
 | Prometheus kafka 타겟 Down | `prometheus.prod.yml` 에 Kafka IP가 비어 있을 경우. `Deploy EC2` 워크플로우 재실행 시 자동 수정됨 |
 | Spring Boot Actuator `/actuator/prometheus` 401 | gateway-server `SecurityConfig.java` 에 해당 경로가 `permitAll()` 에 포함되어 있는지 확인 |
+| `apply` 시 `/bin/bash` 없다는 에러 | Windows에서 로컬 실행 시 발생. `terraform.tfvars` 에 `bash_path = "C:/Program Files/Git/bin/bash.exe"` 추가 |
+| Deploy EC2 워크플로우에서 `ecs:ListTasks` AccessDeniedException | `terraform apply` 로 IAM 정책을 최신 상태로 반영한 뒤 워크플로우 재실행 |
 
 ---
 

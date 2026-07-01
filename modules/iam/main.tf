@@ -269,6 +269,8 @@ data "aws_iam_policy_document" "github_actions" {
     resources = [
       "arn:aws:ecs:${var.aws_region}:${var.account_id}:service/${var.name}-cluster/*",
       "arn:aws:ecs:${var.aws_region}:${var.account_id}:task/${var.name}-cluster/*",
+      "arn:aws:ecs:${var.aws_region}:${var.account_id}:cluster/${var.name}-cluster",
+      "arn:aws:ecs:${var.aws_region}:${var.account_id}:container-instance/${var.name}-cluster/*",
     ]
   }
   # RegisterTaskDefinition은 AWS 정책상 특정 리소스로 범위 제한이 불가합니다.
