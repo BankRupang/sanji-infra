@@ -54,9 +54,17 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
   cluster_name       = aws_ecs_cluster.main.name
   capacity_providers = ["FARGATE", "FARGATE_SPOT"]
 
+  # base=N: 최소 N개를 On-Demand로 보장. desired_count <= base이면 Spot이 쓰이지 않음
+  # weight=0: 해당 provider로 태스크를 배치하지 않음 (dev FARGATE=0으로 100% Spot 달성)
   default_capacity_provider_strategy {
     capacity_provider = "FARGATE"
-    weight            = 1
+    base              = var.fargate_on_demand_base
+    weight            = var.fargate_on_demand_weight
+  }
+
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = var.fargate_spot_weight
   }
 }
 
@@ -243,7 +251,17 @@ resource "aws_ecs_service" "app" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app[each.key].arn
   desired_count   = 1
-  launch_type     = "FARGATE"
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    base              = var.fargate_on_demand_base
+    weight            = var.fargate_on_demand_weight
+  }
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = var.fargate_spot_weight
+  }
 
   health_check_grace_period_seconds = each.value.alb ? 180 : null
 

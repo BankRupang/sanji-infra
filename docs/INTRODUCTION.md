@@ -240,7 +240,8 @@ resource "null_resource" "db_schema_init" {
 
 | 위치 | 무엇을 무시 | 왜 |
 |---|---|---|
-| `aws_ecs_service`(모든 서비스) | `desired_count` | 오토스케일링이나 사람이 태스크 수를 바꿔도 Terraform이 되돌리면 안 됨 |
+| `aws_ecs_service.app`, `aws_ecs_service.bid` | `desired_count`, `task_definition` | CI/CD가 새 Task Definition 리비전을 등록해 배포하므로, Terraform이 이전 리비전으로 되돌리면 안 됨. `desired_count`는 오토스케일링이 바꾼 값을 Terraform이 덮어쓰지 않도록 |
+| `aws_ecs_service.keycloak` | `desired_count` | 공개 이미지라 CI/CD가 Task Definition을 교체하지 않으므로 `task_definition`은 무시 불필요 |
 | `aws_instance`(EC2) | `ami` | 최신 AMI가 새로 나와도 EC2를 갈아엎지 않도록 |
 | `bootstrap`의 시크릿 | `value` | 사람이 채운 실제 시크릿 값을 `CHANGE_ME`로 덮어쓰지 않도록 |
 
@@ -280,6 +281,66 @@ credit_alarms = {
 
 둘 다 로그 그룹/서비스 디스커버리를 만드는 모양은 일반 서비스와 같지만, `for_each` 없이 단일 자원으로 적혀 있다는 점만 다릅니다.
 
+**bid와 keycloak이 `launch_type = "FARGATE"`를 유지하는 이유**
+
+일반 서비스 9개(`aws_ecs_service.app`)는 `launch_type` 없이 `capacity_provider_strategy`로 Fargate Spot을 허용합니다. bid와 keycloak은 `launch_type = "FARGATE"`를 명시해 클러스터 기본 전략을 우회하고 항상 On-Demand로만 뜹니다.
+
+- bid: WebSocket 장기 연결(STOMP) 서비스라, Spot 인스턴스가 회수될 때 세션이 전부 끊겨 입찰 실패가 납니다.
+- keycloak: 인증 서버라, 태스크가 꺼지면 모든 서비스의 로그인이 불가해집니다.
+
+---
+
+## 12-1. Fargate Spot capacity_provider_strategy 패턴
+
+`capacity_provider_strategy`는 태스크를 어떤 용량(On-Demand vs Spot)으로 띄울지 비율로 지정하는 블록입니다. `launch_type`이 없어야 이 블록이 동작합니다. (`launch_type`을 명시하면 capacity_provider_strategy를 무시합니다.)
+
+```hcl
+# aws_ecs_cluster_capacity_providers (클러스터 기본 전략)
+resource "aws_ecs_cluster_capacity_providers" "main" {
+  # base=N: 최소 N개를 On-Demand로 보장. desired_count <= base이면 Spot이 쓰이지 않음
+  # weight=0: 해당 provider로 태스크를 배치하지 않음 (dev FARGATE=0 → 100% Spot)
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    base              = var.fargate_on_demand_base    # prod=1, dev=0
+    weight            = var.fargate_on_demand_weight  # prod=1, dev=0
+  }
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = var.fargate_spot_weight       # 기본 3
+  }
+}
+
+# aws_ecs_service.app - 서비스 레벨에도 동일하게 명시 (코드만 봐도 Spot 여부 파악 가능)
+resource "aws_ecs_service" "app" {
+  # launch_type 없음 → capacity_provider_strategy가 동작함
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    base              = var.fargate_on_demand_base
+    weight            = var.fargate_on_demand_weight
+  }
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = var.fargate_spot_weight
+  }
+  ...
+}
+
+# bid / keycloak - launch_type 명시로 항상 On-Demand (capacity_provider_strategy 무시됨)
+resource "aws_ecs_service" "bid" {
+  launch_type = "FARGATE"
+  ...
+}
+```
+
+`base = N`은 "이 capacity provider로 반드시 띄울 최솟값"입니다. `weight = 0`이면 해당 provider는 태스크 배치 대상에서 제외됩니다. weight 유효 범위는 0~1000이며, 전략 안에서 하나 이상은 반드시 weight > 0이어야 합니다.
+
+| 환경 | FARGATE base | FARGATE weight | FARGATE_SPOT weight | 결과 |
+|---|---|---|---|---|
+| prod | 1 | 1 | 3 | 첫 태스크 On-Demand, 추가분 Spot 75% |
+| dev | 0 | 0 | 3 | 100% Spot |
+
+서비스 레벨 `capacity_provider_strategy`는 클러스터 기본값과 동일하더라도 명시적으로 유지합니다. 서비스 코드만 봐도 이 서비스가 Spot을 쓰는지 On-Demand인지 바로 알 수 있기 때문입니다.
+
 ---
 
 ## 13. 파일별 코드 빠른 색인
@@ -306,8 +367,9 @@ credit_alarms = {
 | **services 정의표, 환경변수 조합, keycloak_url** | `modules/ecs/main.tf` |
 | ECR 저장소(services에서 목록 가져옴) | `modules/ecs/main.tf` |
 | services 표를 도는 ECS 리소스, service_env, secrets 주입 | `modules/ecs/main.tf` |
-| bid 오토스케일링 | `modules/ecs/main.tf` |
-| keycloak(공개 이미지) | `modules/ecs/main.tf` |
+| Fargate Spot capacity_provider_strategy (일반 서비스 9개) | `modules/ecs/main.tf` |
+| bid 오토스케일링, launch_type=FARGATE(On-Demand 고정) | `modules/ecs/main.tf` |
+| keycloak(공개 이미지), launch_type=FARGATE(On-Demand 고정) | `modules/ecs/main.tf` |
 | t3 크레딧 계산 경보 | `modules/observability/main.tf` |
 | IAM 역할 전체(ECS, EC2, GitHub OIDC) | `modules/iam/main.tf` |
 | secret_arns 조회표, Kafka SSM 파라미터 | `modules/ssm/main.tf` |

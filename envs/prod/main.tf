@@ -134,6 +134,9 @@ module "ecs" {
   bid_max_capacity            = var.bid_max_capacity
   bid_cpu_target              = var.bid_cpu_target
   monitoring_private_ip       = module.compute_ec2.monitoring_private_ip
+  fargate_on_demand_base      = var.fargate_on_demand_base
+  fargate_on_demand_weight    = var.fargate_on_demand_weight
+  fargate_spot_weight         = var.fargate_spot_weight
 }
 
 module "ssm" {
