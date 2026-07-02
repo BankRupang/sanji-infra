@@ -213,6 +213,16 @@ resource "aws_security_group_rule" "redis_in_from_ecs" {
   description              = "ECS to Redis"
 }
 
+resource "aws_security_group_rule" "redis_in_from_monitoring" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.redis.id
+  from_port                = 6379
+  to_port                  = 6379
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.monitoring.id
+  description              = "Monitoring EC2 admin access to Redis"
+}
+
 resource "aws_security_group_rule" "kafka_in_from_ecs" {
   type                     = "ingress"
   security_group_id        = aws_security_group.kafka.id
