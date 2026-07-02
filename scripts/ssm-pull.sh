@@ -3,7 +3,7 @@
 # terraform destroy 전에 실행합니다.
 #
 # 사용법:
-#   bash scripts/ssm-backup.sh
+#   bash scripts/ssm-pull.sh
 #
 # 결과: ssm-backup.json 파일에 현재 SSM 파라미터 값을 저장합니다.
 #       이 파일은 git에 올리지 마세요 (시크릿 포함).

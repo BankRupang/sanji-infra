@@ -17,7 +17,7 @@ terraform init && terraform apply
 cd ..
 bash scripts/ssm-init.sh        # ssm-backup.json 생성
 # ssm-backup.json에서 "CHANGE_ME"를 실제 값으로 교체합니다.
-bash scripts/ssm-restore.sh     # ssm-backup.json 반영
+bash scripts/ssm-push.sh        # ssm-backup.json 반영
 
 # 2) 환경 폴더로 이동 후 인프라 배포 (prod 예시)
 cd envs/prod                    # 개발 환경이면 envs/dev
@@ -32,12 +32,6 @@ terraform destroy
 terraform apply
 # GitHub Actions에서 Deploy EC2 수동 실행 (Kafka, 모니터링 EC2 배포)
 # GitHub Actions에서 Deploy ECS 수동 실행 (workflow_dispatch)
-
-# 4) SSM 파라미터 값 저장
-# SSM Parameter Storage는 destroy되지 않기 때문에 별도로 저장할 필요는 없지만,
-# 다른 곳으로 import할 필요가 있을 경우 아래 스크립트를 실행해주세요.
-bash ../../scripts/ssm-backup.sh    # ssm-backup.json 파일 생성
-bash ../../scripts/ssm-restore.sh   # ssm-backup.json 파일 적용
 ```
 
 ## 파일 구성
@@ -48,8 +42,8 @@ bash ../../scripts/ssm-restore.sh   # ssm-backup.json 파일 적용
 root
 ├── bootstrap/                 # S3 버킷 + SSM Parameter Store 생성 (최초 1회 실행)
 ├── scripts/
-│   ├── ssm-backup.sh          # destroy 전 SSM 파라미터 값 백업
-│   ├── ssm-restore.sh         # apply 후 SSM 파라미터 값 복구
+│   ├── ssm-pull.sh            # destroy 전 SSM 파라미터 값 가져오기
+│   ├── ssm-push.sh            # apply 후 SSM 파라미터 값 적용
 │   ├── db-schema-init.sh      # RDS 스키마 초기화 (null_resource 경유 자동 실행)
 ├── docs/
 │   ├── DEPLOY.md              # 단계별 배포 가이드 문서

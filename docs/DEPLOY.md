@@ -101,7 +101,7 @@ bash scripts/ssm-init.sh
 #    (없는 항목은 CHANGE_ME로 두면 ssm-restore.sh가 건너뜁니다)
 
 # 3) AWS에 일괄 등록
-bash scripts/ssm-restore.sh
+bash scripts/ssm-push.sh
 ```
 
 파라미터 경로와 내용은 다음과 같습니다.
@@ -251,10 +251,10 @@ terraform destroy
 
 ```bash
 # 현재 SSM 파라미터 값을 파일로 내보내기
-bash scripts/ssm-backup.sh    # scripts/ssm-backup.json 생성 (시크릿 포함, git에 올리지 마세요)
+bash scripts/ssm-pull.sh      # scripts/ssm-backup.json 생성 (시크릿 포함, git에 올리지 마세요)
 
 # 파일에서 SSM 파라미터 값 복구 (CHANGE_ME 항목과 kafka/private-ip는 건너뜀)
-bash scripts/ssm-restore.sh
+bash scripts/ssm-push.sh
 ```
 
 ---

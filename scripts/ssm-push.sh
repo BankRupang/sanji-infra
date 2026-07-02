@@ -3,7 +3,7 @@
 # terraform apply 후에 실행합니다.
 #
 # 사용법:
-#   bash scripts/ssm-restore.sh
+#   bash scripts/ssm-push.sh
 #
 # 전제 조건: scripts/ssm-backup.json 파일이 있어야 합니다.
 
