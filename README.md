@@ -1,19 +1,16 @@
-# 산지직경 Terraform 저장소
+# 산지직경 인프라 레포지토리
 
-산지직경 프로젝트 배포를 위한 레포지토리입니다.
-
-인프라 설계(VPC, ALB, ECS Fargate, RDS, ElastiCache, Kafka/모니터링 EC2, ECR, IAM, SSM)를 Terraform 코드로 옮긴 저장소입니다.
+산지직경 프로젝트 배포를 위한 Terraform 코드 저장소입니다.
 
 ## 배포 방법
 
-자세한 내용은 [DEPLOY.md](docs/DEPLOY.md)를 참고해 주세요.
-
-S3 backend와 SSM Parameter Store를 먼저 만들어야 합니다. `bootstrap/` 폴더를 먼저 실행합니다.
+배포에 대한 자세한 설명은 [DEPLOY.md](docs/DEPLOY.md)를 참고해 주세요.
 
 ```bash
 # 1) S3 버킷 + SSM Parameter Store 생성 (최초 1회)
 cd bootstrap
-terraform init && terraform apply
+terraform init
+terraform apply
 cd ..
 bash scripts/ssm-init.sh        # ssm-backup.json 생성
 # ssm-backup.json에서 "CHANGE_ME"를 실제 값으로 교체합니다.
@@ -30,15 +27,15 @@ terraform apply
 # 3) 인프라 제거 후 재배포 시 전체 복구 절차
 terraform destroy
 terraform apply
-# GitHub Actions에서 Deploy EC2 수동 실행 (Kafka, 모니터링 EC2 배포)
-# GitHub Actions에서 Deploy ECS 수동 실행 (workflow_dispatch)
+# GitHub Actions에서 Deploy EC2 수동 실행
+# GitHub Actions에서 Deploy ECS 수동 실행
 ```
 
 ## 파일 구성
 
 코드에 대한 자세한 설명은 [INTRODUCTION.md](docs/INTRODUCTION.md)를 참고해 주세요.
 
-```
+```bash
 root
 ├── bootstrap/                 # S3 버킷 + SSM Parameter Store 생성 (최초 1회 실행)
 ├── scripts/
